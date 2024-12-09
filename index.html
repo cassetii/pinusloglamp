@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Schedule</title>
+    <style>
+        /* Root colors */
+        :root {
+            --primary-color: #6b9726;
+            --secondary-color: #435b33;
+            --accent-color: #7e8d73;
+            --text-color: #ffffff;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+        }
+
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--background-color);
+            color: var(--secondary-color);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: var(--card-background);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.8s ease-out;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            background: var(--background-color);
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px var(--primary-color);
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: var(--primary-color);
+            color: var(--text-color);
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .button:hover {
+            background: var(--secondary-color);
+            transform: scale(1.05);
+        }
+
+        .summary {
+            margin-top: 20px;
+            padding: 10px;
+            background: var(--card-background);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            animation: fadeIn 0.8s ease-in;
+            display: none;
+        }
+
+        .summary.show {
+            display: block;
+        }
+
+        .summary h4 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Booking Schedule</h1>
+    <form id="bookingForm">
+        <div class="form-group">
+            <label for="fullName">Nama Lengkap</label>
+            <input type="text" id="fullName" name="fullName" placeholder="Masukkan nama lengkap" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Masukkan email" required>
+        </div>
+        <div class="form-group">
+            <label for="phone">No. Whatsapp</label>
+            <input type="tel" id="phone" name="phone" placeholder="Masukkan no. Whatsapp" required>
+        </div>
+        <div class="form-group">
+            <label for="checkIn">Tanggal Check-In</label>
+            <input type="date" id="checkIn" name="checkIn" required>
+        </div>
+        <div class="form-group">
+            <label for="checkOut">Tanggal Check-Out</label>
+            <input type="date" id="checkOut" name="checkOut" required>
+        </div>
+        <div class="form-group">
+            <label for="tent">Jenis Tenda</label>
+            <select id="tent" name="tent" required>
+                <option value="" disabled selected>Pilih Tenda</option>
+                <option value="Rinjani">Rinjani</option>
+                <option value="Semeru">Semeru</option>
+                <option value="Mahameru">Mahameru</option>
+                <option value="Bawakaraeng">Bawakaraeng</option>
+                <option value="Rantemario">Rantemario</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="package">Paket</label>
+            <select id="package" name="package" required>
+                <option value="" disabled selected>Pilih Paket</option>
+                <option value="500000">Tenda Only</option>
+                <option value="800000">Family (Maks. 4 Orang)</option>
+                <option value="1100000">Group 1 (Maks. 6 Orang)</option>
+                <option value="1400000">Group 2 (Maks. 8 Orang)</option>
+            </select>
+        </div>
+        <a href="#" id="calculate" class="button">Hitung Total</a>
+    </form>
+
+    <div id="summary" class="summary">
+        <h4>Rincian Pemesanan</h4>
+        <p id="summaryText"></p>
+        <a href="#" id="checkout" class="button">Checkout via WhatsApp</a>
+    </div>
+</div>
+
+<script>
+    const rupiah = (number) => {
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR"
+        }).format(number);
+    };
+
+    document.getElementById('calculate').addEventListener('click', (e) => {
+        e.preventDefault();
+        const fullName = document.getElementById('fullName').value;
+        const email = document.getElementById('email').value;
+        const phone = document.getElementById('phone').value;
+        const checkIn = new Date(document.getElementById('checkIn').value);
+        const checkOut = new Date(document.getElementById('checkOut').value);
+        const tent = document.getElementById('tent').value;
+        const packagePrice = parseInt(document.getElementById('package').value);
+
+        if (!checkIn || !checkOut || !tent || isNaN(packagePrice)) {
+            alert('Lengkapi semua data sebelum menghitung.');
+            return;
+        }
+
+        const days = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        const totalPrice = days * packagePrice;
+
+        const summaryText = `
+            Nama: ${fullName}<br>
+            Email: ${email}<br>
+            No. Whatsapp: ${phone}<br>
+            Tenda: ${tent}<br>
+            Lama Menginap: ${days} malam<br>
+            Total Harga: ${rupiah(totalPrice)}
+        `;
+
+        document.getElementById('summaryText').innerHTML = summaryText;
+        document.getElementById('summary').classList.add('show');
+
+        const waMessage = `Halo, saya ${fullName}. Saya ingin memesan tenda ${tent} dari tanggal ${checkIn.toLocaleDateString()} hingga ${checkOut.toLocaleDateString()} untuk ${days} malam. Total harga: ${rupiah(totalPrice)}.`;
+        document.getElementById('checkout').href = `https://wa.me/628875941607?text=${encodeURIComponent(waMessage)}`;
+    });
+</script>
+
+</body>
+</html>
