@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Pinuslo Glamping Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, onSnapshot, query, orderBy, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgPQbxL0pmAwVtzChO9dv2iGstNDMnIRk",
+            authDomain: "pinusloglamp.firebaseapp.com",
+            projectId: "pinusloglamp",
+            storageBucket: "pinusloglamp.firebasestorage.app",
+            messagingSenderId: "544739826929",
+            appId: "1:544739826929:web:5832ce13f7a425c1c59d50",
+            measurementId: "G-7H0ZVE477H"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const analytics = getAnalytics(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.updateDoc = updateDoc;
+        window.doc = doc;
+        window.onSnapshot = onSnapshot;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.deleteDoc = deleteDoc;
+        
+        console.log('🔥 Firebase initialized successfully!');
+        
+        // Initialize app after Firebase is ready
+        if(window.initApp) {
+            window.initApp();
+        }
+    </script>
+
+    <style>
+        :root {
+            --cream: #F9F5F0;
+            --light-cream: #F2EAD3;
+            --orange: #F4991A;
+            --green: #344F1F;
+            --red: #FF3B30;
+            --blue: #007AFF;
+            --yellow: #FFCC00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: var(--cream);
+            min-height: 100vh;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 430px;
+            margin: 0 auto;
+            background: var(--cream);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(180deg, var(--green) 0%, #2d4419 100%);
+            padding: 50px 20px 30px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: var(--light-cream);
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .firebase-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(52, 201, 89, 0.9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .firebase-status.syncing {
+            background: rgba(255, 204, 0, 0.9);
+        }
+
+        .pulse {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 430px;
+            margin: 0 auto;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 20px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            z-index: 1000;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            border: none;
+            background: none;
+            color: #8E8E93;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tab-item.active {
+            color: var(--orange);
+        }
+
+        .tab-icon {
+            font-size: 24px;
+        }
+
+        .badge-notif {
+            position: absolute;
+            top: 4px;
+            right: 10px;
+            background: var(--red);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .content {
+            padding: 20px;
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 16px;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            color: var(--green);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control, .form-select {
+            background: var(--cream);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            background: var(--light-cream);
+            box-shadow: 0 0 0 4px rgba(244, 153, 26, 0.1);
+        }
+
+        .form-select {
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23344F1F' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 40px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--orange) 0%, #e08915 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(244, 153, 26, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+
+        .btn-secondary {
+            background: var(--cream);
+            border: 2px solid var(--green);
+            color: var(--green);
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-approve {
+            background: var(--green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn-reject {
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .multi-booking-item {
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .remove-item {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 16px;
+            background: transparent;
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .filter-chip {
+            background: white;
+            border: 2px solid var(--cream);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-chip.active {
+            background: var(--orange);
+            color: white;
+            border-color: var(--orange);
+        }
+
+        .history-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .history-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .history-tent {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .status-waiting {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .status-paid {
+            background: #C8E6C9;
+            color: #2E7D32;
+        }
+
+        .status-confirmed {
+            background: #D1F2EB;
+            color: #0C5E4C;
+        }
+
+        .status-checkin {
+            background: #E1BEE7;
+            color: #6A1B9A;
+        }
+
+        .status-checkout {
+            background: #B2DFDB;
+            color: #00695C;
+        }
+
+        .status-rejected {
+            background: #FFCDD2;
+            color: #C62828;
+        }
+
+        .history-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--cream);
+        }
+
+        .detail-item {
+            font-size: 13px;
+        }
+
+        .detail-label {
+            color: #8E8E93;
+            display: block;
+        }
+
+        .detail-value {
+            color: var(--green);
+            font-weight: 600;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .countdown-timer {
+            background: linear-gradient(135deg, var(--red) 0%, #ff6b5f 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stat-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--green);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--orange);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #8E8E93;
+        }
+
+        .payment-qr {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .payment-qr img {
+            max-width: 250px;
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+        }
+
+        .payment-info {
+            background: var(--light-cream);
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+        }
+
+        .payment-amount {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--orange);
+            margin: 16px 0;
+        }
+
+        .upload-proof {
+            position: relative;
+            background: var(--cream);
+            border: 2px dashed var(--green);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            margin: 16px 0;
+        }
+
+        .upload-proof input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+        }
+
+        .upload-proof img {
+            max-width: 200px;
+            margin-top: 16px;
+            border-radius: 8px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideUp 0.3s ease;
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .modal-close {
+            background: var(--cream);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-text {
+            color: #8E8E93;
+            font-size: 16px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        input[readonly] {
+            background: var(--light-cream) !important;
+            color: var(--orange);
+            font-weight: 600;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .calendar-header {
+            font-size: 12px;
+            color: #8E8E93;
+            font-weight: 600;
+            padding: 8px 0;
+        }
+
+        .calendar-date {
+            background: white;
+            border: 2px solid var(--cream);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .calendar-date:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .calendar-date.empty {
+            background: #34C759;
+            color: white;
+            border-color: #34C759;
+        }
+
+        .calendar-date.available {
+            background: var(--yellow);
+            color: white;
+            border-color: var(--yellow);
+        }
+
+        .calendar-date.busy {
+            background: var(--orange);
+            color: white;
+            border-color: var(--orange);
+        }
+
+        .calendar-date.full {
+            background: var(--red);
+            color: white;
+            border-color: var(--red);
+        }
+
+        .calendar-date.past {
+            background: #E0E0E0;
+            color: #999;
+            border-color: #E0E0E0;
+            cursor: not-allowed;
+        }
+
+        .calendar-date.past:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .booking-count {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255,255,255,0.9);
+            color: var(--green);
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-switcher {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: var(--cream);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .view-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--green);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .legend-horizontal {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .month-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .month-btn {
+            background: var(--cream);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .month-label {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .export-btn {
+            background: var(--green);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tent-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .tent-item {
+            background: var(--cream);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tent-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tent-status.available {
+            background: #34C759;
+            color: white;
+        }
+
+        .tent-status.booked {
+            background: var(--red);
+            color: white;
+        }
+
+        .booking-item {
+            background: white;
+            border: 2px solid var(--cream);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .booking-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .booking-item-name {
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .booking-item-tent {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .matrix-table {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: 120px repeat(auto-fill, 50px);
+            gap: 4px;
+            min-width: 100%;
+        }
+
+        .matrix-cell {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .matrix-header {
+            background: var(--green);
+            color: white;
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            padding: 0 8px;
+        }
+
+        .matrix-date-header {
+            background: var(--cream);
+            color: var(--green);
+            font-size: 10px;
+            padding: 4px;
+        }
+
+        .matrix-cell.tent-name {
+            background: var(--light-cream);
+            color: var(--green);
+            justify-content: flex-start;
+            padding-left: 12px;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        .matrix-cell.empty {
+            background: #34C759;
+            cursor: pointer;
+        }
+
+        .matrix-cell.booked {
+            background: var(--red);
+            color: white;
+            cursor: pointer;
+        }
+
+        .matrix-cell:hover:not(.tent-name):not(.matrix-header):not(.matrix-date-header) {
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+
+        .quick-booking-form {
+            margin-top: 16px;
+        }
+
+        .selected-date-info {
+            background: var(--light-cream);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .selected-date-info div {
+            font-size: 14px;
+            color: var(--green);
+            margin-bottom: 4px;
+        }
+
+        .selected-date-info strong {
+            font-size: 18px;
+            color: var(--orange);
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        .proof-preview {
+            max-width: 100%;
+            margin-top: 12px;
+            border-radius: 12px;
+        }
+
+        .booking-id {
+            font-family: monospace;
+            background: var(--cream);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--green);
+            display: inline-block;
+            margin: 8px 0;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(249, 245, 240, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--cream);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+        <div style="color: var(--green); font-weight: 600;">Memuat data...</div>
+    </div>
+
+    <div class="app-container">
+        <div class="header">
+            <div class="firebase-status" id="firebaseStatus">
+                <div class="pulse"></div>
+                <span>Connected</span>
+            </div>
+            <h1>🏕️ Pinuslo Glamping</h1>
+            <p>Cloud Booking System</p>
+        </div>
+
+        <!-- HOME TAB -->
+        <div class="content active" id="homeTab">
+            <div class="card">
+                <h2 class="section-title">Reservasi Baru</h2>
+                <form id="reservationForm">
+                    <div class="form-section">
+                        <label class="form-label">Nama Pemesan</label>
+                        <input type="text" class="form-control" id="namaPemesan" required placeholder="Nama lengkap">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">No. WhatsApp</label>
+                        <input type="tel" class="form-control" id="whatsappNumber" required placeholder="08123456789">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="emailPemesan" placeholder="email@example.com">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Jenis Paket</label>
+                        <input type="text" class="form-control" id="jenisPaket" required placeholder="Contoh: Paket Romantic">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Harga Paket</label>
+                        <input type="number" class="form-control" id="hargaPaket" required placeholder="0" min="0">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Tanggal Check-in</label>
+                        <input type="date" class="form-control" id="periodeCheckin" required>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Tanggal Check-out</label>
+                        <input type="date" class="form-control" id="periodeCheckout" required>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Down Payment (DP)</label>
+                        <input type="number" class="form-control" id="downPayment" required placeholder="0" min="0">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Sisa Pelunasan</label>
+                        <input type="text" class="form-control" id="sisaPelunasan" readonly placeholder="Auto calculate">
+                    </div>
+
+                    <div id="multiBookingContainer"></div>
+
+                    <button type="button" class="btn-secondary" id="addTentBtn">
+                        ➕ Tambah Tenda (Multi-Booking)
+                    </button>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 12px;">
+                        <span>✓</span> Buat Reservasi
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CALENDAR TAB -->
+        <div class="content" id="calendarTab">
+            <div class="card">
+                <div class="form-section">
+                    <label class="form-label">Filter Tenda</label>
+                    <select class="form-select" id="tentFilter">
+                        <option value="all">Semua Tenda</option>
+                        <option value="Rinjani">Rinjani</option>
+                        <option value="Semeru">Semeru</option>
+                        <option value="Mahameru">Mahameru</option>
+                        <option value="Rantemario">Rantemario</option>
+                        <option value="Bawakaraeng">Bawakaraeng</option>
+                        <option value="Bulubaria">Bulubaria</option>
+                        <option value="Bulusaraung">Bulusaraung</option>
+                        <option value="Bialo">Bialo</option>
+                        <option value="Bulo-bulo">Bulo-bulo</option>
+                        <option value="Dome 1">Dome 1</option>
+                        <option value="Dome 2">Dome 2</option>
+                        <option value="Dome 3">Dome 3</option>
+                        <option value="Dome 4">Dome 4</option>
+                        <option value="Dome 5">Dome 5</option>
+                        <option value="Dome 6">Dome 6</option>
+                        <option value="Dome 7">Dome 7</option>
+                        <option value="Dome 8">Dome 8</option>
+                        <option value="Dome 9">Dome 9</option>
+                        <option value="Dome 10">Dome 10</option>
+                        <option value="Dome 11">Dome 11</option>
+                        <option value="Dome 12">Dome 12</option>
+                    </select>
+                </div>
+
+                <div class="view-switcher">
+                    <button class="view-btn active" data-view="calendar">📅 Kalender</button>
+                    <button class="view-btn" data-view="matrix">📊 Matrix</button>
+                </div>
+
+                <div id="calendarView">
+                    <div class="month-selector">
+                        <button class="month-btn" id="prevMonth">←</button>
+                        <div class="month-label" id="currentMonth"></div>
+                        <button class="month-btn" id="nextMonth">→</button>
+                    </div>
+
+                    <div class="legend-horizontal">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #34C759;"></div>
+                            <span>Kosong</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--yellow);"></div>
+                            <span>Tersisa</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--orange);"></div>
+                            <span>Hampir Penuh</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--red);"></div>
+                            <span>Penuh</span>
+                        </div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="calendar-header">Min</div>
+                        <div class="calendar-header">Sen</div>
+                        <div class="calendar-header">Sel</div>
+                        <div class="calendar-header">Rab</div>
+                        <div class="calendar-header">Kam</div>
+                        <div class="calendar-header">Jum</div>
+                        <div class="calendar-header">Sab</div>
+                    </div>
+
+                    <div class="calendar-grid" id="calendarDays"></div>
+                </div>
+
+                <div id="matrixView" style="display: none;">
+                    <div class="month-selector">
+                        <button class="month-btn" id="prevMonthMatrix">←</button>
+                        <div class="month-label" id="currentMonthMatrix"></div>
+                        <button class="month-btn" id="nextMonthMatrix">→</button>
+                    </div>
+                    <div id="matrixContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div class="content" id="historyTab">
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" id="searchInput" placeholder="Cari nama, tenda, atau tanggal...">
+            </div>
+
+            <div class="filter-chips">
+                <button class="filter-chip active" data-filter="all">Semua</button>
+                <button class="filter-chip" data-filter="pending">Pending</button>
+                <button class="filter-chip" data-filter="waiting">Menunggu</button>
+                <button class="filter-chip" data-filter="paid">Dibayar</button>
+                <button class="filter-chip" data-filter="confirmed">Confirmed</button>
+            </div>
+
+            <button class="export-btn" id="exportExcel">
+                📊 Export ke Excel
+            </button>
+
+            <button class="export-btn" id="exportCSV" style="background: var(--blue);">
+                📄 Export ke CSV
+            </button>
+
+            <div id="historyList"></div>
+        </div>
+
+        <!-- ANALYTICS TAB -->
+        <div class="content" id="analyticsTab">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total Pendapatan</div>
+                    <span>💰</span>
+                </div>
+                <div class="stat-value" id="totalRevenue">Rp 0</div>
+                <div class="stat-label">Dari semua reservasi</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Total Reservasi</div>
+                    <span>📋</span>
+                </div>
+                <div class="stat-value" id="totalBookings">0</div>
+                <div class="stat-label">Booking tercatat</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-title">Menunggu Approval</div>
+                    <span>⏳</span>
+                </div>
+                <div class="stat-value" id="pendingApproval">0</div>
+                <div class="stat-label">Perlu dikonfirmasi</div>
+            </div>
+
+            <div class="card">
+                <h3 class="section-title">Tenda Terfavorit</h3>
+                <canvas id="tentChart" height="200"></canvas>
+            </div>
+
+            <div class="card">
+                <h3 class="section-title">Pendapatan Bulanan</h3>
+                <canvas id="revenueChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- ADMIN TAB -->
+        <div class="content" id="adminTab">
+            <div class="card">
+                <h2 class="section-title">Admin Panel</h2>
+                <p style="color: #8E8E93; margin-bottom: 20px;">Kelola pembayaran dan konfirmasi booking</p>
+                
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-admin-filter="waiting">Menunggu</button>
+                    <button class="filter-chip" data-admin-filter="all">Semua</button>
+                </div>
+
+                <div id="adminList"></div>
+            </div>
+        </div>
+
+        <!-- TAB BAR -->
+        <div class="tab-bar">
+            <button class="tab-item active" data-tab="homeTab">
+                <div class="tab-icon">🏠</div>
+                <div>Home</div>
+            </button>
+            <button class="tab-item" data-tab="calendarTab">
+                <div class="tab-icon">📅</div>
+                <div>Kalender</div>
+            </button>
+            <button class="tab-item" data-tab="historyTab">
+                <div class="tab-icon">📜</div>
+                <div>Riwayat</div>
+            </button>
+            <button class="tab-item" data-tab="analyticsTab">
+                <div class="tab-icon">📈</div>
+                <div>Analitik</div>
+            </button>
+            <button class="tab-item" data-tab="adminTab">
+                <div class="tab-icon">👤</div>
+                <div>Admin</div>
+                <span class="badge-notif" id="adminBadge" style="display: none;">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">💳 Pembayaran</div>
+                <button class="modal-close" onclick="closePaymentModal()">×</button>
+            </div>
+            <div id="paymentContent"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="dateDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="dateDetailTitle">📅 Detail Tanggal</div>
+                <button class="modal-close" onclick="closeDateDetailModal()">×</button>
+            </div>
+            <div id="dateDetailContent"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="quickBookingModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">⚡ Quick Booking</div>
+                <button class="modal-close" onclick="closeQuickBookingModal()">×</button>
+            </div>
+            <div id="quickBookingContent"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let bookings = [];
+        let multiTents = [];
+        let currentCalendarDate = new Date();
+        let currentMatrixDate = new Date();
+        let currentFilter = 'all';
+        let currentAdminFilter = 'waiting';
+        let searchQuery = '';
+        let currentBookingId = null;
+        let selectedTentFilter = 'all';
+        let currentView = 'calendar';
+        let unsubscribe = null;
+
+        const tentOptions = ['Rinjani','Semeru','Mahameru','Rantemario','Bawakaraeng','Bulubaria','Bulusaraung','Bialo','Bulo-bulo','Dome 1','Dome 2','Dome 3','Dome 4','Dome 5','Dome 6','Dome 7','Dome 8','Dome 9','Dome 10','Dome 11','Dome 12'];
+
+        const PAYMENT_QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AQAAAACgl2eQAAAEjklEQVR4Xu2YQW7bMBBF/6KbXniXG+QEzQ2aG/QEvUFv0Bv0Br1BL9AL9AK5QC/QTTfddFGgQG3JomVSdpwWaJoAzocAW6I+RpT4Z/5wLP/x/rf4/4L+BfqPR3+H/gX6j0d/h/4F+o9Hf4f+BfqPR3+H/gX6j0d/h/4F+o9Hf4f+BfqPR/8O+jN9Rv8B9A16/x36M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0f8Bkt8U2kbuXGIAAAAASUVORK5CYII=';
+
+        // Initialize app
+        window.initApp = function() {
+            console.log('🚀 Initializing app...');
+            setupFirebaseListeners();
+            setupEventListeners();
+            loadInitialData();
+        };
+
+        // Firebase listeners for real-time sync
+        function setupFirebaseListeners() {
+            const statusEl = document.getElementById('firebaseStatus');
+            
+            try {
+                const bookingsRef = window.collection(window.db, 'bookings');
+                const q = window.query(bookingsRef, window.orderBy('createdAt', 'desc'));
+                
+                unsubscribe = window.onSnapshot(q, (snapshot) => {
+                    bookings = [];
+                    snapshot.forEach((doc) => {
+                        bookings.push({
+                            firestoreId: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    console.log('📡 Data synced from Firebase:', bookings.length, 'bookings');
+                    statusEl.innerHTML = '<div class="pulse"></div><span>Synced</span>';
+                    statusEl.className = 'firebase-status';
+                    
+                    updateAdminBadge();
+                    renderHistory();
+                    renderCalendar();
+                    renderAnalytics();
+                    
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }, (error) => {
+                    console.error('Firebase error:', error);
+                    statusEl.innerHTML = '<span>⚠️ Offline</span>';
+                    statusEl.className = 'firebase-status';
+                });
+            } catch(error) {
+                console.error('Setup error:', error);
+            }
+        }
+
+        async function loadInitialData() {
+            try {
+                const bookingsRef = window.collection(window.db, 'bookings');
+                const snapshot = await window.getDocs(bookingsRef);
+                
+                bookings = [];
+                snapshot.forEach((doc) => {
+                    bookings.push({
+                        firestoreId: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log('📥 Initial data loaded:', bookings.length, 'bookings');
+            } catch(error) {
+                console.error('Load error:', error);
+            }
+        }
+
+        async function saveBooking(bookingData) {
+            const statusEl = document.getElementById('firebaseStatus');
+            statusEl.innerHTML = '<div class="pulse"></div><span>Saving...</span>';
+            statusEl.className = 'firebase-status syncing';
+            
+            try {
+                const bookingsRef = window.collection(window.db, 'bookings');
+                const docRef = await window.addDoc(bookingsRef, bookingData);
+                console.log('✅ Booking saved:', docRef.id);
+                return docRef.id;
+            } catch(error) {
+                console.error('Save error:', error);
+                alert('❌ Gagal menyimpan: ' + error.message);
+                return null;
+            }
+        }
+
+        async function updateBooking(firestoreId, updates) {
+            const statusEl = document.getElementById('firebaseStatus');
+            statusEl.innerHTML = '<div class="pulse"></div><span>Updating...</span>';
+            statusEl.className = 'firebase-status syncing';
+            
+            try {
+                const bookingRef = window.doc(window.db, 'bookings', firestoreId);
+                await window.updateDoc(bookingRef, updates);
+                console.log('✅ Booking updated:', firestoreId);
+            } catch(error) {
+                console.error('Update error:', error);
+                alert('❌ Gagal update: ' + error.message);
+            }
+        }
+
+        function setupEventListeners() {
+            // Tab navigation
+            document.querySelectorAll('.tab-item').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.dataset.tab;
+                    document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    if(tabId === 'calendarTab') renderCalendar();
+                    if(tabId === 'historyTab') renderHistory();
+                    if(tabId === 'analyticsTab') renderAnalytics();
+                    if(tabId === 'adminTab') renderAdmin();
+                });
+            });
+
+            // Form calculations
+            document.getElementById('hargaPaket').addEventListener('input', calculateSisa);
+            document.getElementById('downPayment').addEventListener('input', calculateSisa);
+
+            // Multi-booking
+            document.getElementById('addTentBtn').addEventListener('click', addTent);
+
+            // Form submit
+            document.getElementById('reservationForm').addEventListener('submit', handleFormSubmit);
+
+            // Calendar
+            document.getElementById('tentFilter').addEventListener('change', (e) => {
+                selectedTentFilter = e.target.value;
+                if(currentView === 'calendar') renderCalendar();
+                else renderMatrix();
+            });
+
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentView = e.target.dataset.view;
+                    
+                    if(currentView === 'calendar') {
+                        document.getElementById('calendarView').style.display = 'block';
+                        document.getElementById('matrixView').style.display = 'none';
+                        renderCalendar();
+                    } else {
+                        document.getElementById('calendarView').style.display = 'none';
+                        document.getElementById('matrixView').style.display = 'block';
+                        renderMatrix();
+                    }
+                });
+            });
+
+            document.getElementById('prevMonth').addEventListener('click', () => {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+                renderCalendar();
+            });
+
+            document.getElementById('nextMonth').addEventListener('click', () => {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+                renderCalendar();
+            });
+
+            document.getElementById('prevMonthMatrix').addEventListener('click', () => {
+                currentMatrixDate.setMonth(currentMatrixDate.getMonth() - 1);
+                renderMatrix();
+            });
+
+            document.getElementById('nextMonthMatrix').addEventListener('click', () => {
+                currentMatrixDate.setMonth(currentMatrixDate.getMonth() + 1);
+                renderMatrix();
+            });
+
+            // Search and filter
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase();
+                renderHistory();
+            });
+
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    if(!e.target.dataset.adminFilter) {
+                        document.querySelectorAll('.filter-chip').forEach(c => {
+                            if(!c.dataset.adminFilter) c.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        currentFilter = e.target.dataset.filter;
+                        renderHistory();
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-admin-filter]').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    document.querySelectorAll('[data-admin-filter]').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentAdminFilter = e.target.dataset.adminFilter;
+                    renderAdmin();
+                });
+            });
+
+            // Export
+            document.getElementById('exportExcel').addEventListener('click', exportExcel);
+            document.getElementById('exportCSV').addEventListener('click', exportCSV);
+        }
+
+        function calculateSisa() {
+            const harga = parseFloat(document.getElementById('hargaPaket').value) || 0;
+            const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+            const sisa = harga - dp;
+            document.getElementById('sisaPelunasan').value = sisa >= 0 ? 'Rp ' + sisa.toLocaleString('id-ID') : 'Rp 0';
+        }
+
+        function addTent() {
+            const container = document.getElementById('multiBookingContainer');
+            const index = multiTents.length;
+            
+            const tentDiv = document.createElement('div');
+            tentDiv.className = 'multi-booking-item';
+            tentDiv.innerHTML = `
+                <button type="button" class="remove-item" onclick="removeTent(${index})">×</button>
+                <div class="form-section">
+                    <label class="form-label">Tipe Tenda ${index + 1}</label>
+                    <select class="form-select multi-tent" required>
+                        <option value="">Pilih Tenda</option>
+                        ${tentOptions.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+            container.appendChild(tentDiv);
+            multiTents.push({ index });
+        }
+
+        window.removeTent = function(index) {
+            const container = document.getElementById('multiBookingContainer');
+            container.children[index].remove();
+            multiTents.splice(index, 1);
+        };
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const checkin = document.getElementById('periodeCheckin').value;
+            const checkout = document.getElementById('periodeCheckout').value;
+            const selectedTents = Array.from(document.querySelectorAll('.multi-tent')).map(s => s.value).filter(v => v);
+            
+            if(selectedTents.length === 0) {
+                alert('⚠️ Minimal pilih 1 tenda!');
+                return;
+            }
+
+            const conflicts = checkBookingConflicts(selectedTents, checkin, checkout);
+            
+            if(conflicts.length > 0) {
+                alert(`⚠️ Konflik Booking!\n\nTenda berikut sudah dibooking:\n${conflicts.join('\n')}`);
+                return;
+            }
+            
+            const harga = parseFloat(document.getElementById('hargaPaket').value);
+            const dp = parseFloat(document.getElementById('downPayment').value);
+            
+            const booking = {
+                id: 'BK' + Date.now(),
+                nama: document.getElementById('namaPemesan').value,
+                whatsapp: document.getElementById('whatsappNumber').value,
+                email: document.getElementById('emailPemesan').value,
+                tenda: selectedTents,
+                paket: document.getElementById('jenisPaket').value,
+                harga: harga,
+                checkin: checkin,
+                checkout: checkout,
+                dp: dp,
+                sisa: harga - dp,
+                status: 'pending',
+                paymentProof: null,
+                createdAt: new Date().toISOString(),
+                expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            };
+            
+            const firestoreId = await saveBooking(booking);
+            
+            if(firestoreId) {
+                alert('✅ Reservasi berhasil dibuat dan disimpan ke cloud!');
+                document.getElementById('reservationForm').reset();
+                document.getElementById('multiBookingContainer').innerHTML = '';
+                multiTents = [];
+                
+                showPaymentModal(booking.id);
+            }
+        }
+
+        function checkBookingConflicts(tents, checkin, checkout) {
+            const conflicts = [];
+            const checkinDate = new Date(checkin);
+            const checkoutDate = new Date(checkout);
+            
+            bookings.forEach(booking => {
+                if(['confirmed', 'paid', 'waiting'].includes(booking.status)) {
+                    const bookingCheckin = new Date(booking.checkin);
+                    const bookingCheckout = new Date(booking.checkout);
+                    
+                    const hasOverlap = checkinDate < bookingCheckout && checkoutDate > bookingCheckin;
+                    
+                    if(hasOverlap) {
+                        booking.tenda.forEach(tent => {
+                            if(tents.includes(tent)) {
+                                conflicts.push(`${tent} (${booking.checkin} - ${booking.checkout})`);
+                            }
+                        });
+                    }
+                }
+            });
+            
+            return conflicts;
+        }
+
+        function updateAdminBadge() {
+            const waiting = bookings.filter(b => b.status === 'waiting').length;
+            const badge = document.getElementById('adminBadge');
+            if(waiting > 0) {
+                badge.textContent = waiting;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function showPaymentModal(bookingId) {
+            currentBookingId = bookingId;
+            const booking = bookings.find(b => b.id === bookingId);
+            
+            const content = `
+                <div class="booking-id">ID: ${booking.id}</div>
+                
+                <div class="payment-info">
+                    <div style="font-size: 14px; color: #8E8E93; margin-bottom: 8px;">Total yang harus dibayar:</div>
+                    <div class="payment-amount">Rp ${booking.dp.toLocaleString('id-ID')}</div>
+                    <div style="font-size: 13px; color: #666;">Down Payment untuk ${booking.tenda.join(', ')}</div>
+                </div>
+
+                <div class="payment-qr">
+                    <div style="font-size: 16px; font-weight: 700; color: var(--green); margin-bottom: 16px;">
+                        Scan QR Code untuk Bayar
+                    </div>
+                    <img src="${PAYMENT_QR}" alt="QR Payment">
+                    <div style="font-size: 13px; color: #8E8E93; margin-top: 12px;">
+                        QRIS • Transfer Bank • E-Wallet
+                    </div>
+                </div>
+
+                <div class="upload-proof" id="uploadArea">
+                    <input type="file" id="proofUpload" accept="image/*" onchange="handleProofUpload(event)">
+                    <div style="font-size: 40px; margin-bottom: 8px;">📸</div>
+                    <div style="font-weight: 600; color: var(--green);">Upload Bukti Transfer</div>
+                    <div style="font-size: 13px; color: #8E8E93; margin-top: 4px;">Tap untuk pilih foto</div>
+                    <img id="proofPreview" style="display: none;">
+                </div>
+
+                <button class="btn-primary" onclick="submitPayment()" id="submitPaymentBtn" style="display: none;">
+                    <span>✓</span> Kirim Bukti Pembayaran
+                </button>
+
+                <button class="btn-whatsapp" onclick="shareToWhatsApp('${booking.id}')">
+                    <span>📱</span> Kirim ke WhatsApp
+                </button>
+
+                <div style="text-align: center; margin-top: 16px; font-size: 13px; color: #8E8E93;">
+                    Bayar sebelum: ${formatDateTime(booking.expiryDate)}
+                </div>
+            `;
+            
+            document.getElementById('paymentContent').innerHTML = content;
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        window.closePaymentModal = function() {
+            document.getElementById('paymentModal').classList.remove('active');
+            currentBookingId = null;
+        };
+
+        window.handleProofUpload = function(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('proofPreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    document.getElementById('submitPaymentBtn').style.display = 'flex';
+                    
+                    const booking = bookings.find(b => b.id === currentBookingId);
+                    if(booking) {
+                        booking.tempProof = e.target.result;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.submitPayment = async function() {
+            const booking = bookings.find(b => b.id === currentBookingId);
+            if(booking && booking.tempProof) {
+                await updateBooking(booking.firestoreId, {
+                    paymentProof: booking.tempProof,
+                    status: 'waiting'
+                });
+                closePaymentModal();
+                alert('✅ Bukti pembayaran berhasil dikirim!\n\nMenunggu konfirmasi admin.');
+                generatePDF(booking);
+            }
+        };
+
+        window.shareToWhatsApp = function(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            const message = `
+🏕️ *PINUSLO GLAMPING - RESERVASI*
+
+📋 *Detail Booking:*
+ID: ${booking.id}
+Nama: ${booking.nama}
+Tenda: ${booking.tenda.join(', ')}
+Paket: ${booking.paket}
+
+📅 *Periode:*
+Check-in: ${formatDate(booking.checkin)}
+Check-out: ${formatDate(booking.checkout)}
+
+💰 *Pembayaran:*
+Total: Rp ${booking.harga.toLocaleString('id-ID')}
+DP: Rp ${booking.dp.toLocaleString('id-ID')}
+Sisa: Rp ${booking.sisa.toLocaleString('id-ID')}
+
+Status: ${booking.status.toUpperCase()}
+
+Terima kasih telah memesan di Pinuslo Glamping! 🌲
+            `.trim();
+            
+            const phone = booking.whatsapp.replace(/^0/, '62');
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        };
+
+        // Calendar functions
+        function renderCalendar() {
+            const container = document.getElementById('calendarDays');
+            container.innerHTML = '';
+            
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            document.getElementById('currentMonth').textContent = 
+                currentCalendarDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            for(let i = 0; i < firstDay; i++) {
+                container.innerHTML += '<div></div>';
+            }
+            
+            for(let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dateObj = new Date(dateStr);
+                const isPast = dateObj < today;
+                
+                let tentsToCheck = selectedTentFilter === 'all' ? tentOptions : [selectedTentFilter];
+                let bookedCount = 0;
+                
+                bookings.forEach(b => {
+                    if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                       dateStr >= b.checkin && dateStr <= b.checkout) {
+                        b.tenda.forEach(t => {
+                            if(tentsToCheck.includes(t)) {
+                                bookedCount++;
+                            }
+                        });
+                    }
+                });
+                
+                const totalTents = tentsToCheck.length;
+                const availableCount = totalTents - bookedCount;
+                
+                let className = 'calendar-date';
+                if(isPast) {
+                    className += ' past';
+                } else if(bookedCount === 0) {
+                    className += ' empty';
+                } else if(availableCount > totalTents * 0.5) {
+                    className += ' available';
+                } else if(availableCount > 0) {
+                    className += ' busy';
+                } else {
+                    className += ' full';
+                }
+                
+                const countBadge = bookedCount > 0 ? `<div class="booking-count">${bookedCount}</div>` : '';
+                
+                container.innerHTML += `
+                    <div class="${className}" onclick="showDateDetail('${dateStr}')" title="${availableCount}/${totalTents} tersedia">
+                        ${day}
+                        ${countBadge}
+                    </div>
+                `;
+            }
+        }
+
+        window.showDateDetail = function(dateStr) {
+            const dateObj = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if(dateObj < today) {
+                alert('Tidak bisa booking tanggal yang sudah lewat');
+                return;
+            }
+
+            const formattedDate = formatDate(dateStr);
+            document.getElementById('dateDetailTitle').textContent = `📅 ${formattedDate}`;
+            
+            let tentsToCheck = selectedTentFilter === 'all' ? tentOptions : [selectedTentFilter];
+            let tentStatus = {};
+            
+            tentsToCheck.forEach(tent => {
+                tentStatus[tent] = { available: true, bookings: [] };
+            });
+            
+            bookings.forEach(b => {
+                if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                   dateStr >= b.checkin && dateStr <= b.checkout) {
+                    b.tenda.forEach(t => {
+                        if(tentStatus[t]) {
+                            tentStatus[t].available = false;
+                            tentStatus[t].bookings.push({
+                                nama: b.nama,
+                                id: b.id,
+                                checkin: b.checkin,
+                                checkout: b.checkout
+                            });
+                        }
+                    });
+                }
+            });
+            
+            const availableTents = Object.entries(tentStatus).filter(([_, status]) => status.available);
+            const bookedTents = Object.entries(tentStatus).filter(([_, status]) => !status.available);
+            
+            let content = `
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #8E8E93; margin-bottom: 8px;">Ketersediaan:</div>
+                    <div style="display: flex; gap: 16px;">
+                        <div>
+                            <div style="font-size: 24px; font-weight: 700; color: #34C759;">${availableTents.length}</div>
+                            <div style="font-size: 12px; color: #8E8E93;">Tersedia</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 24px; font-weight: 700; color: var(--red);">${bookedTents.length}</div>
+                            <div style="font-size: 12px; color: #8E8E93;">Terbooked</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if(availableTents.length > 0) {
+                content += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-weight: 700; color: var(--green); margin-bottom: 12px;">✅ Tenda Tersedia</div>
+                        <div class="tent-list">
+                            ${availableTents.map(([tent, _]) => `
+                                <div class="tent-item">
+                                    <span>${tent}</span>
+                                    <span class="tent-status available">Tersedia</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="btn-primary" onclick="openQuickBooking('${dateStr}', ${JSON.stringify(availableTents.map(([tent]) => tent))})">
+                            ⚡ Quick Booking
+                        </button>
+                    </div>
+                `;
+            }
+            
+            if(bookedTents.length > 0) {
+                content += `
+                    <div>
+                        <div style="font-weight: 700; color: var(--green); margin-bottom: 12px;">❌ Tenda Terbooked</div>
+                        <div class="tent-list">
+                            ${bookedTents.map(([tent, status]) => `
+                                <div class="booking-item">
+                                    <div class="booking-item-header">
+                                        <div>
+                                            <div class="booking-item-name">${tent}</div>
+                                            <div class="booking-item-tent">${status.bookings.map(b => b.nama).join(', ')}</div>
+                                        </div>
+                                        <span class="tent-status booked">Booked</span>
+                                    </div>
+                                    ${status.bookings.map(b => `
+                                        <div style="font-size: 12px; color: #8E8E93; margin-top: 4px;">
+                                            ${b.id} • ${formatDate(b.checkin)} - ${formatDate(b.checkout)}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('dateDetailContent').innerHTML = content;
+            document.getElementById('dateDetailModal').classList.add('active');
+        };
+
+        window.closeDateDetailModal = function() {
+            document.getElementById('dateDetailModal').classList.remove('active');
+        };
+
+        window.openQuickBooking = function(dateStr, availableTents) {
+            closeDateDetailModal();
+            
+            const content = `
+                <div class="selected-date-info">
+                    <div>Tanggal dipilih:</div>
+                    <strong>${formatDate(dateStr)}</strong>
+                </div>
+                
+                <form id="quickBookForm" class="quick-booking-form">
+                    <div class="form-section">
+                        <label class="form-label">Nama Pemesan</label>
+                        <input type="text" class="form-control" id="qbNama" required placeholder="Nama lengkap">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">No. WhatsApp</label>
+                        <input type="tel" class="form-control" id="qbWhatsapp" required placeholder="08123456789">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="qbEmail" placeholder="email@example.com">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Pilih Tenda</label>
+                        <select class="form-select" id="qbTenda" required multiple size="5">
+                            ${availableTents.map(tent => `<option value="${tent}">${tent}</option>`).join('')}
+                        </select>
+                        <div style="font-size: 12px; color: #8E8E93; margin-top: 4px;">Hold Ctrl/Cmd untuk pilih banyak</div>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Jenis Paket</label>
+                        <input type="text" class="form-control" id="qbPaket" required placeholder="Contoh: Paket Romantic">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Harga Paket</label>
+                        <input type="number" class="form-control" id="qbHarga" required placeholder="0" min="0">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Check-in</label>
+                        <input type="date" class="form-control" id="qbCheckin" value="${dateStr}" required>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Check-out</label>
+                        <input type="date" class="form-control" id="qbCheckout" required>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Down Payment (DP)</label>
+                        <input type="number" class="form-control" id="qbDP" required placeholder="0" min="0">
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <span>✓</span> Buat Reservasi
+                    </button>
+                </form>
+            `;
+            
+            document.getElementById('quickBookingContent').innerHTML = content;
+            document.getElementById('quickBookingModal').classList.add('active');
+            
+            document.getElementById('quickBookForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const selectedTents = Array.from(document.getElementById('qbTenda').selectedOptions).map(o => o.value);
+                const checkin = document.getElementById('qbCheckin').value;
+                const checkout = document.getElementById('qbCheckout').value;
+                
+                const conflicts = checkBookingConflicts(selectedTents, checkin, checkout);
+                
+                if(conflicts.length > 0) {
+                    alert(`⚠️ Konflik Booking!\n\nTenda berikut sudah dibooking:\n${conflicts.join('\n')}`);
+                    return;
+                }
+                
+                const harga = parseFloat(document.getElementById('qbHarga').value);
+                const dp = parseFloat(document.getElementById('qbDP').value);
+                
+                const booking = {
+                    id: 'BK' + Date.now(),
+                    nama: document.getElementById('qbNama').value,
+                    whatsapp: document.getElementById('qbWhatsapp').value,
+                    email: document.getElementById('qbEmail').value,
+                    tenda: selectedTents,
+                    paket: document.getElementById('qbPaket').value,
+                    harga: harga,
+                    checkin: checkin,
+                    checkout: checkout,
+                    dp: dp,
+                    sisa: harga - dp,
+                    status: 'pending',
+                    paymentProof: null,
+                    createdAt: new Date().toISOString(),
+                    expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                };
+                
+                const firestoreId = await saveBooking(booking);
+                
+                if(firestoreId) {
+                    closeQuickBookingModal();
+                    alert('✅ Reservasi berhasil dibuat!');
+                    showPaymentModal(booking.id);
+                    renderCalendar();
+                }
+            });
+        };
+
+        window.closeQuickBookingModal = function() {
+            document.getElementById('quickBookingModal').classList.remove('active');
+        };
+
+        function renderMatrix() {
+            const container = document.getElementById('matrixContainer');
+            const year = currentMatrixDate.getFullYear();
+            const month = currentMatrixDate.getMonth();
+            
+            document.getElementById('currentMonthMatrix').textContent = 
+                currentMatrixDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let tentsToShow = selectedTentFilter === 'all' ? tentOptions : [selectedTentFilter];
+            
+            let html = '<div class="matrix-table"><div class="matrix-grid" style="grid-template-columns: 120px repeat(' + daysInMonth + ', 50px);">';
+            
+            html += '<div class="matrix-cell matrix-header">Tenda / Tgl</div>';
+            for(let day = 1; day <= daysInMonth; day++) {
+                html += `<div class="matrix-cell matrix-date-header">${day}</div>`;
+            }
+            
+            tentsToShow.forEach(tent => {
+                html += `<div class="matrix-cell tent-name">${tent}</div>`;
+                
+                for(let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dateObj = new Date(dateStr);
+                    const isPast = dateObj < today;
+                    
+                    let isBooked = false;
+                    bookings.forEach(b => {
+                        if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                           dateStr >= b.checkin && dateStr <= b.checkout &&
+                           b.tenda.includes(tent)) {
+                            isBooked = true;
+                        }
+                    });
+                    
+                    let className = 'matrix-cell';
+                    if(isPast) {
+                        className += ' past';
+                        html += `<div class="${className}">-</div>`;
+                    } else if(isBooked) {
+                        className += ' booked';
+                        html += `<div class="${className}" onclick="showDateDetail('${dateStr}')">✕</div>`;
+                    } else {
+                        className += ' empty';
+                        html += `<div class="${className}" onclick="openQuickBooking('${dateStr}', ['${tent}'])">✓</div>`;
+                    }
+                }
+            });
+            
+            html += '</div></div>';
+            container.innerHTML = html;
+        }
+
+        // History
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            let filtered = [...bookings];
+            
+            if(currentFilter !== 'all') {
+                filtered = filtered.filter(b => b.status === currentFilter);
+            }
+            
+            if(searchQuery) {
+                filtered = filtered.filter(b => 
+                    b.nama.toLowerCase().includes(searchQuery) ||
+                    b.tenda.some(t => t.toLowerCase().includes(searchQuery)) ||
+                    b.checkin.includes(searchQuery) ||
+                    b.id.toLowerCase().includes(searchQuery)
+                );
+            }
+            
+            if(filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">Tidak ada reservasi ditemukan</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(b => {
+                const expiryDate = new Date(b.expiryDate);
+                const now = new Date();
+                const hoursLeft = Math.max(0, Math.floor((expiryDate - now) / (1000 * 60 * 60)));
+                const showCountdown = b.status === 'pending' && hoursLeft > 0;
+                
+                return `
+                    <div class="history-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="booking-id" style="margin: 0;">${b.id}</div>
+                            <div class="status-badge status-${b.status}">${getStatusText(b.status)}</div>
+                        </div>
+                        <div class="history-header">
+                            <div>
+                                <div class="history-name">${b.nama}</div>
+                                <div class="history-tent">${b.tenda.join(', ')}</div>
+                            </div>
+                        </div>
+                        <div class="history-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Check-in</span>
+                                <span class="detail-value">${formatDate(b.checkin)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Check-out</span>
+                                <span class="detail-value">${formatDate(b.checkout)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Total</span>
+                                <span class="detail-value">Rp ${b.harga.toLocaleString('id-ID')}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Sisa</span>
+                                <span class="detail-value">Rp ${b.sisa.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
+                        ${showCountdown ? `
+                            <div class="countdown-timer">
+                                ⏰ ${hoursLeft} jam lagi untuk upload bukti bayar
+                            </div>
+                        ` : ''}
+                        ${b.status === 'pending' ? `
+                            <div class="action-buttons">
+                                <button class="btn-primary" onclick="showPaymentModal('${b.id}')">
+                                    💳 Bayar Sekarang
+                                </button>
+                            </div>
+                        ` : ''}
+                        ${b.status === 'confirmed' || b.status === 'paid' ? `
+                            <div class="action-buttons">
+                                <button class="btn-whatsapp" onclick="shareToWhatsApp('${b.id}')">
+                                    📱 Kirim ke WA
+                                </button>
+                                <button class="btn-primary" onclick="generatePDF(${JSON.stringify(b).replace(/"/g, '&quot;')})">
+                                    📄 PDF
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'Pending',
+                'waiting': 'Menunggu Approval',
+                'paid': 'Dibayar',
+                'confirmed': 'Confirmed',
+                'checkin': 'Check-in',
+                'checkout': 'Check-out',
+                'rejected': 'Ditolak'
+            };
+            return statusMap[status] || status;
+        }
+
+        // Admin
+        function renderAdmin() {
+            const container = document.getElementById('adminList');
+            let filtered = [...bookings];
+            
+            if(currentAdminFilter === 'waiting') {
+                filtered = filtered.filter(b => b.status === 'waiting');
+            }
+            
+            const waitingCount = bookings.filter(b => b.status === 'waiting').length;
+            document.querySelector('[data-admin-filter="waiting"]').textContent = `Menunggu (${waitingCount})`;
+            
+            if(filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">✅</div>
+                        <div class="empty-text">Tidak ada pembayaran menunggu approval</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(b => `
+                <div class="history-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div class="booking-id" style="margin: 0;">${b.id}</div>
+                        <div class="status-badge status-${b.status}">${getStatusText(b.status)}</div>
+                    </div>
+                    <div class="history-header">
+                        <div>
+                            <div class="history-name">${b.nama}</div>
+                            <div class="history-tent">${b.tenda.join(', ')} • ${b.paket}</div>
+                        </div>
+                    </div>
+                    <div class="history-details">
+                        <div class="detail-item">
+                            <span class="detail-label">DP Dibayar</span>
+                            <span class="detail-value">Rp ${b.dp.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">WhatsApp</span>
+                            <span class="detail-value">${b.whatsapp}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Check-in</span>
+                            <span class="detail-value">${formatDate(b.checkin)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Dibuat</span>
+                            <span class="detail-value">${formatDateTime(b.createdAt)}</span>
+                        </div>
+                    </div>
+                    ${b.paymentProof ? `
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 8px;">Bukti Transfer:</div>
+                            <img src="${b.paymentProof}" class="proof-preview" style="cursor: pointer;" onclick="window.open('${b.paymentProof}', '_blank')">
+                        </div>
+                    ` : ''}
+                    ${b.status === 'waiting' ? `
+                        <div class="action-buttons">
+                            <button class="btn-approve" onclick="approvePayment('${b.firestoreId}', '${b.id}', '${b.nama}', '${b.whatsapp}', ${b.dp})">
+                                ✓ Approve
+                            </button>
+                            <button class="btn-reject" onclick="rejectPayment('${b.firestoreId}', '${b.id}', '${b.nama}', '${b.whatsapp}')">
+                                ✕ Tolak
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        window.approvePayment = async function(firestoreId, bookingId, nama, whatsapp, dp) {
+            await updateBooking(firestoreId, { status: 'paid' });
+            alert('✅ Pembayaran telah diapprove!');
+            
+            const message = `🎉 *PEMBAYARAN DITERIMA*\n\nHalo ${nama},\n\nPembayaran DP Anda sebesar Rp ${dp.toLocaleString('id-ID')} telah kami terima dan dikonfirmasi.\n\n✅ Status: CONFIRMED\n📋 ID: ${bookingId}\n\nTerima kasih! 🏕️`;
+            const phone = whatsapp.replace(/^0/, '62');
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+        };
+
+        window.rejectPayment = async function(firestoreId, bookingId, nama, whatsapp) {
+            const reason = prompt('Alasan penolakan:');
+            if(reason) {
+                await updateBooking(firestoreId, { status: 'rejected' });
+                alert('❌ Pembayaran ditolak');
+                
+                const message = `⚠️ *PEMBAYARAN DITOLAK*\n\nHalo ${nama},\n\nMaaf, pembayaran Anda ditolak.\n\nAlasan: ${reason}\n\nSilakan upload ulang bukti transfer yang benar.\n\n📋 ID: ${bookingId}`;
+                const phone = whatsapp.replace(/^0/, '62');
+                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+            }
+        };
+
+        // Analytics
+        function renderAnalytics() {
+            const totalRevenue = bookings.filter(b => ['paid', 'confirmed'].includes(b.status)).reduce((sum, b) => sum + b.harga, 0);
+            const totalBookings = bookings.length;
+            const pendingApproval = bookings.filter(b => b.status === 'waiting').length;
+            
+            document.getElementById('totalRevenue').textContent = 'Rp ' + totalRevenue.toLocaleString('id-ID');
+            document.getElementById('totalBookings').textContent = totalBookings;
+            document.getElementById('pendingApproval').textContent = pendingApproval;
+            
+            const tentCounts = {};
+            bookings.forEach(b => {
+                b.tenda.forEach(t => {
+                    tentCounts[t] = (tentCounts[t] || 0) + 1;
+                });
+            });
+            
+            const sortedTents = Object.entries(tentCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            
+            const tentCtx = document.getElementById('tentChart');
+            if(window.tentChartInstance) window.tentChartInstance.destroy();
+            window.tentChartInstance = new Chart(tentCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedTents.map(t => t[0]),
+                    datasets: [{
+                        label: 'Jumlah Booking',
+                        data: sortedTents.map(t => t[1]),
+                        backgroundColor: '#F4991A'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            
+            const monthlyRevenue = {};
+            bookings.filter(b => ['paid', 'confirmed'].includes(b.status)).forEach(b => {
+                const month = new Date(b.checkin).toLocaleDateString('id-ID', { month: 'short' });
+                monthlyRevenue[month] = (monthlyRevenue[month] || 0) + b.harga;
+            });
+            
+            const revenueCtx = document.getElementById('revenueChart');
+            if(window.revenueChartInstance) window.revenueChartInstance.destroy();
+            window.revenueChartInstance = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyRevenue),
+                    datasets: [{
+                        label: 'Pendapatan (Rp)',
+                        data: Object.values(monthlyRevenue),
+                        borderColor: '#344F1F',
+                        backgroundColor: 'rgba(52, 79, 31, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // Export
+        function exportExcel() {
+            const ws = XLSX.utils.json_to_sheet(bookings.map(b => ({
+                'ID': b.id,
+                'Nama': b.nama,
+                'WhatsApp': b.whatsapp,
+                'Tenda': b.tenda.join(', '),
+                'Paket': b.paket,
+                'Harga': b.harga,
+                'Check-in': b.checkin,
+                'Check-out': b.checkout,
+                'DP': b.dp,
+                'Sisa': b.sisa,
+                'Status': b.status
+            })));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Reservasi');
+            XLSX.writeFile(wb, `Pinuslo_Reservasi_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function exportCSV() {
+            const csv = [
+                ['ID','Nama','WhatsApp','Tenda','Paket','Harga','Check-in','Check-out','DP','Sisa','Status'],
+                ...bookings.map(b => [
+                    b.id,
+                    b.nama,
+                    b.whatsapp,
+                    b.tenda.join('; '),
+                    b.paket,
+                    b.harga,
+                    b.checkin,
+                    b.checkout,
+                    b.dp,
+                    b.sisa,
+                    b.status
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Pinuslo_Reservasi_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        // PDF
+        window.generatePDF = function(booking) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let y = 20;
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Bukti Reservasi Tenda Glamping', 105, y, { align: 'center' });
+            
+            y += 10;
+            doc.setFontSize(12);
+            doc.text('==========================', 105, y, { align: 'center' });
+            
+            y += 15;
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(11);
+            
+            doc.text(`ID Booking    : ${booking.id}`, 20, y); y += 10;
+            doc.text(`1. Nama Pemesan   : ${booking.nama}`, 20, y); y += 10;
+            doc.text(`2. Tipe Tenda     : ${booking.tenda.join(', ')}`, 20, y); y += 10;
+            doc.text(`3. Jenis Paket    : ${booking.paket}`, 20, y); y += 10;
+            doc.text(`4. Harga Paket    : Rp ${booking.harga.toLocaleString('id-ID')}`, 20, y); y += 10;
+            doc.text(`5. Periode Checkin: ${formatDate(booking.checkin)}`, 20, y); y += 10;
+            doc.text(`6. Periode Checkout: ${formatDate(booking.checkout)}`, 20, y); y += 10;
+            doc.text(`7. Down Payment   : Rp ${booking.dp.toLocaleString('id-ID')}`, 20, y); y += 10;
+            doc.text(`8. Sisa Pelunasan : Rp ${booking.sisa.toLocaleString('id-ID')}`, 20, y); y += 15;
+            
+            doc.setFont(undefined, 'bold');
+            doc.text('Aturan & Standard Reservasi :', 20, y);
+            doc.text('========================', 20, y + 5); y += 15;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(9);
+            
+            const rules = [
+                '- Checkin pukul : 13.00  dan CheckOut pukul : 14.00',
+                '- Penyewaan Glamping yang telah terbit Invoice, TIDAK DAPAT melakukan pembatalan reservasi.',
+                '- Pinusloglamping memberikan kebijakan Re-Schedule Waktu, hanya 1 kali dan dilakukan paling lambat H-2.',
+                '- Waktu re schedule akan disesuaikan dgn jadwal yang lowong serta memperhatikan ketersediaan tenda serupa.',
+                '- Harga Paket TIDAK TERMASUK : HTM Kawasan Hutan Pinus Selow, Welcome drink & Breakfast',
+                '- Pelampauan jumlah penghuni dari paket yg di ambil akan di kenakan biaya tambahan.'
+            ];
+            
+            rules.forEach(rule => { doc.text(rule, 20, y); y += 5; });
+            
+            y += 10;
+            doc.setFont(undefined, 'bold');
+            doc.text('TATA TERTIB PENGUNJUNG :', 20, y);
+            doc.text('========================', 20, y + 5); y += 15;
+            
+            doc.setFont(undefined, 'normal');
+            
+            const tataTertib = [
+                '- WAJIB Menjaga Ketertiban dengan menghargai waktu Jam Tenang/hening yakni Pukul 23.00',
+                '- TIDAK diperkenankan membawa Sound System yg mengganggu ketenangan penghuni lainnya',
+                '- TIDAK diperkenankan memasukkan binatang peliharaan ke dalam tenda',
+                '- Tidak Diperkenankan Merokok di dalam tenda',
+                '- Tidak Diperkenankan Memasak dan Makan Minum di Dalam Tenda',
+                '- WAJIB menjaga Kebersihan Disekeliling Areal Glamping',
+                '- Syarat dan Ketentuan berlaku'
+            ];
+            
+            tataTertib.forEach(rule => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.text(rule, 20, y); y += 5;
+            });
+            
+            y += 10;
+            doc.text('Demikian di sampaikan dan catatan ini mengikat ke dua belah pihak...', 20, y); y += 10;
+            doc.text('Hormat kami,', 20, y); y += 10;
+            doc.setFont(undefined, 'bold');
+            doc.text('Pinusloglamping', 20, y);
+            
+            doc.save(`Reservasi_${booking.id}_${booking.nama.replace(/\s/g, '_')}.pdf`);
+        };
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('id-ID', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
+        }
+
+        function formatDateTime(dateStr) {
+            return new Date(dateStr).toLocaleDateString('id-ID', { 
+                day: 'numeric', 
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Auto-check if Firebase is loaded
+        if(window.db) {
+            window.initApp();
+        }
+    </script>
+</body>
+</html>
