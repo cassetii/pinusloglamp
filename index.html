@@ -1103,7 +1103,7 @@
 
                     <div class="form-section">
                         <label class="form-label">Harga Paket</label>
-                        <input type="number" class="form-control" id="hargaPaket" required placeholder="0" min="0">
+                        <input type="text" class="form-control" id="hargaPaket" required placeholder="Rp 0">
                     </div>
 
                     <div class="form-section">
@@ -1118,7 +1118,7 @@
 
                     <div class="form-section">
                         <label class="form-label">Down Payment (DP)</label>
-                        <input type="number" class="form-control" id="downPayment" required placeholder="0" min="0">
+                        <input type="text" class="form-control" id="downPayment" required placeholder="Rp 0">
                     </div>
 
                     <div class="form-section">
@@ -1382,6 +1382,21 @@
 
         const PAYMENT_QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AQAAAACgl2eQAAAEjklEQVR4Xu2YQW7bMBBF/6KbXniXG+QEzQ2aG/QEvUFv0Bv0Br1BL9AL9AK5QC/QTTfddFGgQG3JomVSdpwWaJoAzocAW6I+RpT4Z/5wLP/x/rf4/4L+BfqPR3+H/gX6j0d/h/4F+o9Hf4f+BfqPR3+H/gX6j0d/h/4F+o9Hf4f+BfqPR/8O+jN9Rv8B9A16/x36M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPov4f/APr30T+g/wr9V+i/Qv8V+q/Qf4X+K/RfoX8P/VfgP4D/APp3+A+g/wP4D6B/B/8B9O/hP4D+PfwH0L+H/wD69/AfQP8e/gPo38f+APrv0T+A/gX6M31G/wH0DXr/HfoH6Pfw/V7+APwe+j38/Q7vH8CP4fc7+APwe+h38Pc7vH8AP4bf7+APoH8Pf7/D+wfw+zv8PYD+PYBf0f8Bkt8U2kbuXGIAAAAASUVORK5CYII=';
 
+        // Helper function untuk format rupiah
+        function formatRupiah(amount) {
+            if (typeof amount === 'string') {
+                amount = parseFloat(amount.replace(/[^0-9]/g, ''));
+            }
+            if (isNaN(amount)) return 'Rp 0';
+            return 'Rp ' + amount.toLocaleString('id-ID');
+        }
+
+        // Helper function untuk parse rupiah string ke number
+        function parseRupiah(rupiahString) {
+            if (typeof rupiahString === 'number') return rupiahString;
+            return parseFloat(rupiahString.replace(/[^0-9]/g, '')) || 0;
+        }
+
         // Initialize app
         window.initApp = function() {
             console.log('🚀 Initializing app...');
@@ -1495,9 +1510,43 @@
                 });
             });
 
-            // Form calculations
-            document.getElementById('hargaPaket').addEventListener('input', calculateSisa);
-            document.getElementById('downPayment').addEventListener('input', calculateSisa);
+            // Form calculations with rupiah formatting
+            const hargaInput = document.getElementById('hargaPaket');
+            const dpInput = document.getElementById('downPayment');
+
+            hargaInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+            });
+
+            hargaInput.addEventListener('blur', function(e) {
+                if (e.target.value) {
+                    e.target.value = formatRupiah(e.target.value);
+                }
+                calculateSisa();
+            });
+
+            hargaInput.addEventListener('focus', function(e) {
+                let value = parseRupiah(e.target.value);
+                e.target.value = value > 0 ? value : '';
+            });
+
+            dpInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+            });
+
+            dpInput.addEventListener('blur', function(e) {
+                if (e.target.value) {
+                    e.target.value = formatRupiah(e.target.value);
+                }
+                calculateSisa();
+            });
+
+            dpInput.addEventListener('focus', function(e) {
+                let value = parseRupiah(e.target.value);
+                e.target.value = value > 0 ? value : '';
+            });
 
             // Multi-booking
             document.getElementById('addTentBtn').addEventListener('click', addTent);
@@ -1584,10 +1633,10 @@
         }
 
         function calculateSisa() {
-            const harga = parseFloat(document.getElementById('hargaPaket').value) || 0;
-            const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+            const harga = parseRupiah(document.getElementById('hargaPaket').value);
+            const dp = parseRupiah(document.getElementById('downPayment').value);
             const sisa = harga - dp;
-            document.getElementById('sisaPelunasan').value = sisa >= 0 ? 'Rp ' + sisa.toLocaleString('id-ID') : 'Rp 0';
+            document.getElementById('sisaPelunasan').value = formatRupiah(sisa >= 0 ? sisa : 0);
         }
 
         function addTent() {
@@ -1635,8 +1684,8 @@
                 return;
             }
             
-            const harga = parseFloat(document.getElementById('hargaPaket').value);
-            const dp = parseFloat(document.getElementById('downPayment').value);
+            const harga = parseRupiah(document.getElementById('hargaPaket').value);
+            const dp = parseRupiah(document.getElementById('downPayment').value);
             
             const booking = {
                 id: 'BK' + Date.now(),
@@ -1713,7 +1762,7 @@
                 
                 <div class="payment-info">
                     <div style="font-size: 14px; color: #8E8E93; margin-bottom: 8px;">Total yang harus dibayar:</div>
-                    <div class="payment-amount">Rp ${booking.dp.toLocaleString('id-ID')}</div>
+                    <div class="payment-amount">${formatRupiah(booking.dp)}</div>
                     <div style="font-size: 13px; color: #666;">Down Payment untuk ${booking.tenda.join(', ')}</div>
                 </div>
 
@@ -1805,9 +1854,9 @@ Check-in: ${formatDate(booking.checkin)}
 Check-out: ${formatDate(booking.checkout)}
 
 💰 *Pembayaran:*
-Total: Rp ${booking.harga.toLocaleString('id-ID')}
-DP: Rp ${booking.dp.toLocaleString('id-ID')}
-Sisa: Rp ${booking.sisa.toLocaleString('id-ID')}
+Total: ${formatRupiah(booking.harga)}
+DP: ${formatRupiah(booking.dp)}
+Sisa: ${formatRupiah(booking.sisa)}
 
 Status: ${booking.status.toUpperCase()}
 
@@ -2034,7 +2083,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
 
                     <div class="form-section">
                         <label class="form-label">Harga Paket</label>
-                        <input type="number" class="form-control" id="qbHarga" required placeholder="0" min="0">
+                        <input type="text" class="form-control" id="qbHarga" required placeholder="Rp 0">
                     </div>
 
                     <div class="form-section">
@@ -2049,7 +2098,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
 
                     <div class="form-section">
                         <label class="form-label">Down Payment (DP)</label>
-                        <input type="number" class="form-control" id="qbDP" required placeholder="0" min="0">
+                        <input type="text" class="form-control" id="qbDP" required placeholder="Rp 0">
                     </div>
 
                     <button type="submit" class="btn-primary">
@@ -2060,6 +2109,42 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             
             document.getElementById('quickBookingContent').innerHTML = content;
             document.getElementById('quickBookingModal').classList.add('active');
+
+            // Add rupiah formatting for quick booking form
+            const qbHargaInput = document.getElementById('qbHarga');
+            const qbDPInput = document.getElementById('qbDP');
+
+            qbHargaInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+            });
+
+            qbHargaInput.addEventListener('blur', function(e) {
+                if (e.target.value) {
+                    e.target.value = formatRupiah(e.target.value);
+                }
+            });
+
+            qbHargaInput.addEventListener('focus', function(e) {
+                let value = parseRupiah(e.target.value);
+                e.target.value = value > 0 ? value : '';
+            });
+
+            qbDPInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+            });
+
+            qbDPInput.addEventListener('blur', function(e) {
+                if (e.target.value) {
+                    e.target.value = formatRupiah(e.target.value);
+                }
+            });
+
+            qbDPInput.addEventListener('focus', function(e) {
+                let value = parseRupiah(e.target.value);
+                e.target.value = value > 0 ? value : '';
+            });
             
             document.getElementById('quickBookForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -2075,8 +2160,8 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     return;
                 }
                 
-                const harga = parseFloat(document.getElementById('qbHarga').value);
-                const dp = parseFloat(document.getElementById('qbDP').value);
+                const harga = parseRupiah(document.getElementById('qbHarga').value);
+                const dp = parseRupiah(document.getElementById('qbDP').value);
                 
                 const booking = {
                     id: 'BK' + Date.now(),
@@ -2224,11 +2309,11 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Total</span>
-                                <span class="detail-value">Rp ${b.harga.toLocaleString('id-ID')}</span>
+                                <span class="detail-value">${formatRupiah(b.harga)}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Sisa</span>
-                                <span class="detail-value">Rp ${b.sisa.toLocaleString('id-ID')}</span>
+                                <span class="detail-value">${formatRupiah(b.sisa)}</span>
                             </div>
                         </div>
                         ${showCountdown ? `
@@ -2308,7 +2393,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     <div class="history-details">
                         <div class="detail-item">
                             <span class="detail-label">DP Dibayar</span>
-                            <span class="detail-value">Rp ${b.dp.toLocaleString('id-ID')}</span>
+                            <span class="detail-value">${formatRupiah(b.dp)}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">WhatsApp</span>
@@ -2347,7 +2432,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             await updateBooking(firestoreId, { status: 'paid' });
             alert('✅ Pembayaran telah diapprove!');
             
-            const message = `🎉 *PEMBAYARAN DITERIMA*\n\nHalo ${nama},\n\nPembayaran DP Anda sebesar Rp ${dp.toLocaleString('id-ID')} telah kami terima dan dikonfirmasi.\n\n✅ Status: CONFIRMED\n📋 ID: ${bookingId}\n\nTerima kasih! 🏕️`;
+            const message = `🎉 *PEMBAYARAN DITERIMA*\n\nHalo ${nama},\n\nPembayaran DP Anda sebesar ${formatRupiah(dp)} telah kami terima dan dikonfirmasi.\n\n✅ Status: CONFIRMED\n📋 ID: ${bookingId}\n\nTerima kasih! 🏕️`;
             const phone = whatsapp.replace(/^0/, '62');
             window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
         };
@@ -2370,7 +2455,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             const totalBookings = bookings.length;
             const pendingApproval = bookings.filter(b => b.status === 'waiting').length;
             
-            document.getElementById('totalRevenue').textContent = 'Rp ' + totalRevenue.toLocaleString('id-ID');
+            document.getElementById('totalRevenue').textContent = formatRupiah(totalRevenue);
             document.getElementById('totalBookings').textContent = totalBookings;
             document.getElementById('pendingApproval').textContent = pendingApproval;
             
@@ -2497,11 +2582,11 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             doc.text(`1. Nama Pemesan   : ${booking.nama}`, 20, y); y += 10;
             doc.text(`2. Tipe Tenda     : ${booking.tenda.join(', ')}`, 20, y); y += 10;
             doc.text(`3. Jenis Paket    : ${booking.paket}`, 20, y); y += 10;
-            doc.text(`4. Harga Paket    : Rp ${booking.harga.toLocaleString('id-ID')}`, 20, y); y += 10;
+            doc.text(`4. Harga Paket    : ${formatRupiah(booking.harga)}`, 20, y); y += 10;
             doc.text(`5. Periode Checkin: ${formatDate(booking.checkin)}`, 20, y); y += 10;
             doc.text(`6. Periode Checkout: ${formatDate(booking.checkout)}`, 20, y); y += 10;
-            doc.text(`7. Down Payment   : Rp ${booking.dp.toLocaleString('id-ID')}`, 20, y); y += 10;
-            doc.text(`8. Sisa Pelunasan : Rp ${booking.sisa.toLocaleString('id-ID')}`, 20, y); y += 15;
+            doc.text(`7. Down Payment   : ${formatRupiah(booking.dp)}`, 20, y); y += 10;
+            doc.text(`8. Sisa Pelunasan : ${formatRupiah(booking.sisa)}`, 20, y); y += 15;
             
             doc.setFont(undefined, 'bold');
             doc.text('Aturan & Standard Reservasi :', 20, y);
