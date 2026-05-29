@@ -1226,6 +1226,24 @@
             margin: 4px 0 8px;
         }
 
+        .recap-daterange {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .recap-daterange .dr-field { flex: 1; min-width: 0; }
+        .recap-daterange label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #8E8E93;
+            margin-bottom: 4px;
+        }
+        .recap-daterange input.form-control {
+            padding: 12px;
+            font-size: 14px;
+        }
+
         /* 6 tabs need to fit in the 430px bar */
         .tab-item {
             flex: 1;
@@ -1527,10 +1545,27 @@
                     <input type="text" id="recapSearch" placeholder="Cari tenda, paket, atau tanggal...">
                 </div>
 
-                <div class="recap-filter-label">Filter Bulan</div>
-                <div class="filter-chips" id="recapMonthChips">
-                    <button class="filter-chip active" data-recap-month="all">Semua</button>
+                <div class="recap-filter-label">Filter Periode</div>
+                <div class="recap-daterange">
+                    <div class="dr-field">
+                        <label>Dari Tanggal</label>
+                        <input type="date" class="form-control" id="recapStart">
+                    </div>
+                    <div class="dr-field">
+                        <label>Sampai Tanggal</label>
+                        <input type="date" class="form-control" id="recapEnd">
+                    </div>
                 </div>
+                <div class="filter-chips" id="recapPeriodChips">
+                    <button class="filter-chip active" data-recap-period="all">Semua</button>
+                    <button class="filter-chip" data-recap-period="today">Hari Ini</button>
+                    <button class="filter-chip" data-recap-period="week">Minggu Ini</button>
+                    <button class="filter-chip" data-recap-period="month">Bulan Ini</button>
+                    <button class="filter-chip" data-recap-period="lastmonth">Bulan Lalu</button>
+                </div>
+                <button class="btn-secondary" id="recapClearRange" style="margin-top:8px; padding:8px; font-size:13px;">
+                    ✕ Reset Periode
+                </button>
 
                 <div class="recap-filter-label">Metode Pembayaran</div>
                 <div class="filter-chips" id="recapMethodChips">
@@ -1635,7 +1670,8 @@
         let currentFilter = 'all';
         let currentAdminFilter = 'waiting';
         let searchQuery = '';
-        let recapMonthFilter = 'all';
+        let recapStartDate = '';
+        let recapEndDate = '';
         let recapMethodFilter = 'all';
         let recapSearchQuery = '';
         let currentBookingId = null;
@@ -1913,6 +1949,40 @@
                     recapMethodFilter = btn.dataset.recapMethod;
                     renderRecap();
                 });
+            });
+
+            // Recap quick period buttons
+            document.querySelectorAll('[data-recap-period]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const period = btn.dataset.recapPeriod;
+                    setActivePeriodChip(period);
+                    applyRecapPeriod(period);
+                    renderRecap();
+                });
+            });
+
+            // Recap manual date range -> jadi "custom" (lepas highlight tombol periode)
+            const recapStartEl = document.getElementById('recapStart');
+            const recapEndEl = document.getElementById('recapEnd');
+            recapStartEl.addEventListener('change', (e) => {
+                recapStartDate = e.target.value;
+                setActivePeriodChip(null);
+                renderRecap();
+            });
+            recapEndEl.addEventListener('change', (e) => {
+                recapEndDate = e.target.value;
+                setActivePeriodChip(null);
+                renderRecap();
+            });
+
+            // Reset periode
+            document.getElementById('recapClearRange').addEventListener('click', () => {
+                recapStartDate = '';
+                recapEndDate = '';
+                recapStartEl.value = '';
+                recapEndEl.value = '';
+                setActivePeriodChip('all');
+                renderRecap();
             });
         }
 
@@ -2838,18 +2908,6 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 .sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
         }
 
-        function monthKey(dateStr) {
-            const d = new Date(dateStr);
-            if(isNaN(d)) return null;
-            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        }
-
-        function monthLabel(key) {
-            const [y, m] = key.split('-');
-            const d = new Date(Number(y), Number(m) - 1, 1);
-            return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-        }
-
         function recapHasMethod(b, method) {
             const dpMethod = b.dpMethod || 'qris';
             const sisaMethod = b.sisaMethod || 'tunai';
@@ -2863,8 +2921,12 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         function getFilteredRecapRows() {
             let rows = getRecapRows();
 
-            if(recapMonthFilter !== 'all') {
-                rows = rows.filter(b => monthKey(b.checkin) === recapMonthFilter);
+            // Filter berdasarkan rentang tanggal (cek tanggal check-in)
+            if(recapStartDate) {
+                rows = rows.filter(b => b.checkin && b.checkin >= recapStartDate);
+            }
+            if(recapEndDate) {
+                rows = rows.filter(b => b.checkin && b.checkin <= recapEndDate);
             }
             if(recapMethodFilter !== 'all') {
                 rows = rows.filter(b => recapHasMethod(b, recapMethodFilter));
@@ -2881,28 +2943,48 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             return rows;
         }
 
-        function buildRecapMonthChips() {
-            const container = document.getElementById('recapMonthChips');
-            const keys = [...new Set(getRecapRows().map(b => monthKey(b.checkin)).filter(Boolean))]
-                .sort().reverse();
+        // Format Date object -> 'YYYY-MM-DD' (lokal, bukan UTC)
+        function toDateInput(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
 
-            let html = `<button class="filter-chip ${recapMonthFilter === 'all' ? 'active' : ''}" data-recap-month="all">Semua</button>`;
-            html += keys.map(k =>
-                `<button class="filter-chip ${recapMonthFilter === k ? 'active' : ''}" data-recap-month="${k}">${monthLabel(k)}</button>`
-            ).join('');
-            container.innerHTML = html;
+        // Set rentang tanggal otomatis dari tombol periode cepat
+        function applyRecapPeriod(period) {
+            const today = new Date();
+            let start = '', end = '';
 
-            container.querySelectorAll('[data-recap-month]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    recapMonthFilter = btn.dataset.recapMonth;
-                    renderRecap();
-                });
+            if(period === 'today') {
+                start = end = toDateInput(today);
+            } else if(period === 'week') {
+                const dow = (today.getDay() + 6) % 7; // Senin = 0
+                const monday = new Date(today); monday.setDate(today.getDate() - dow);
+                const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                start = toDateInput(monday); end = toDateInput(sunday);
+            } else if(period === 'month') {
+                start = toDateInput(new Date(today.getFullYear(), today.getMonth(), 1));
+                end = toDateInput(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+            } else if(period === 'lastmonth') {
+                start = toDateInput(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+                end = toDateInput(new Date(today.getFullYear(), today.getMonth(), 0));
+            }
+            // period === 'all' -> kosong (semua)
+
+            recapStartDate = start;
+            recapEndDate = end;
+            document.getElementById('recapStart').value = start;
+            document.getElementById('recapEnd').value = end;
+        }
+
+        function setActivePeriodChip(period) {
+            document.querySelectorAll('[data-recap-period]').forEach(b => {
+                b.classList.toggle('active', b.dataset.recapPeriod === period);
             });
         }
 
         function renderRecap() {
-            buildRecapMonthChips();
-
             const rows = getFilteredRecapRows();
             const container = document.getElementById('recapTableContainer');
 
