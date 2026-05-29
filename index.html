@@ -7,44 +7,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Pinuslo Glamping Pro</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Supabase SDK -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- Firebase SDKs -->
+
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, onSnapshot, query, orderBy, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDgPQbxL0pmAwVtzChO9dv2iGstNDMnIRk",
-            authDomain: "pinusloglamp.firebaseapp.com",
-            projectId: "pinusloglamp",
-            storageBucket: "pinusloglamp.firebasestorage.app",
-            messagingSenderId: "544739826929",
-            appId: "1:544739826929:web:5832ce13f7a425c1c59d50",
-            measurementId: "G-7H0ZVE477H"
-        };
+        const SUPABASE_URL = 'https://wdcgrtlcyrictogmzsnc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkY2dydGxjeXJpY3RvZ216c25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjkyMjMsImV4cCI6MjA5NTYwNTIyM30.i85GOoEBoRKPsoUkaDmwTQA80_wSQ6zscAgzRBkDeFU';
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const analytics = getAnalytics(app);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = supabase;
 
-        window.db = db;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.getDocs = getDocs;
-        window.updateDoc = updateDoc;
-        window.doc = doc;
-        window.onSnapshot = onSnapshot;
-        window.query = query;
-        window.orderBy = orderBy;
-        window.deleteDoc = deleteDoc;
-        
-        console.log('🔥 Firebase initialized successfully!');
-        
-        // Initialize app after Firebase is ready
+        console.log('⚡ Supabase initialized successfully!');
+
+        // Initialize app after Supabase is ready
         if(window.initApp) {
             window.initApp();
         }
@@ -1927,99 +1906,114 @@
             loadInitialData();
         };
 
-        // Firebase listeners for real-time sync
+        // Real-time sync via Supabase
         function setupFirebaseListeners() {
             const statusEl = document.getElementById('firebaseStatus');
-            
+
+            // Initial load + subscribe to changes
+            refreshFromSupabase(true);
+
             try {
-                const bookingsRef = window.collection(window.db, 'bookings');
-                const q = window.query(bookingsRef, window.orderBy('createdAt', 'desc'));
-                
-                unsubscribe = window.onSnapshot(q, (snapshot) => {
-                    bookings = [];
-                    snapshot.forEach((doc) => {
-                        bookings.push({
-                            firestoreId: doc.id,
-                            ...doc.data()
-                        });
-                    });
-                    
-                    console.log('📡 Data synced from Firebase:', bookings.length, 'bookings');
+                window.supabase
+                    .channel('bookings-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+                        refreshFromSupabase(false);
+                    })
+                    .subscribe();
+            } catch(error) {
+                console.error('Realtime subscribe error:', error);
+            }
+        }
+
+        function applyBookingsSnapshot(rows) {
+            // Petakan baris Supabase -> objek booking yang dipakai app
+            bookings = (rows || []).map(r => ({
+                firestoreId: r.id,
+                ...(r.data || {})
+            }));
+        }
+
+        async function refreshFromSupabase(isInitial) {
+            const statusEl = document.getElementById('firebaseStatus');
+            if(statusEl) {
+                statusEl.innerHTML = '<div class="pulse"></div><span>Syncing...</span>';
+                statusEl.className = 'firebase-status syncing';
+            }
+            try {
+                const { data, error } = await window.supabase
+                    .from('bookings')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if(error) throw error;
+
+                applyBookingsSnapshot(data);
+                console.log('📡 Data synced from Supabase:', bookings.length, 'bookings');
+
+                if(statusEl) {
                     statusEl.innerHTML = '<div class="pulse"></div><span>Synced</span>';
                     statusEl.className = 'firebase-status';
-                    
-                    updateAdminBadge();
-                    updateMenungguBadge();
-                    renderHome();
-                    renderMenunggu();
-                    renderBayar();
-                    renderCalendar();
-                    renderAnalytics();
-                    renderRecap();
-                    
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                }, (error) => {
-                    console.error('Firebase error:', error);
+                }
+
+                updateAdminBadge();
+                updateMenungguBadge();
+                renderHome();
+                renderMenunggu();
+                renderBayar();
+                renderCalendar();
+                renderAnalytics();
+                renderRecap();
+
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            } catch(error) {
+                console.error('Supabase error:', error);
+                if(statusEl) {
                     statusEl.innerHTML = '<span>⚠️ Offline</span>';
                     statusEl.className = 'firebase-status';
+                }
+                document.getElementById('loadingOverlay').classList.add('hidden');
 
-                    // Jangan biarkan layar loading nyangkut saat error
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-
-                    const isPerm = (error && (error.code === 'permission-denied' ||
-                        /permission|insufficient/i.test(error.message || '')));
-                    const recapC = document.getElementById('recapTableContainer');
-                    if(recapC) {
-                        recapC.innerHTML = `
-                            <div class="empty-state" style="padding:30px 18px;">
-                                <div class="empty-icon">⚠️</div>
-                                <div class="empty-text">
-                                    Gagal memuat data dari Firebase.<br>
-                                    ${isPerm
-                                        ? 'Akses ditolak — kemungkinan <b>Security Rules Firestore</b> menolak/expired. Perbarui rules di Firebase Console.'
-                                        : 'Periksa koneksi internet, lalu muat ulang halaman (hard refresh).'}
-                                </div>
+                const isPerm = /permission|rls|policy|denied|401|403/i.test((error && (error.message || error.code)) || '');
+                const recapC = document.getElementById('recapTableContainer');
+                if(recapC) {
+                    recapC.innerHTML = `
+                        <div class="empty-state" style="padding:30px 18px;">
+                            <div class="empty-icon">⚠️</div>
+                            <div class="empty-text">
+                                Gagal memuat data dari Supabase.<br>
+                                ${isPerm
+                                    ? 'Akses ditolak — periksa <b>Row Level Security (RLS) policy</b> tabel bookings di Supabase.'
+                                    : 'Periksa koneksi internet, lalu muat ulang halaman (hard refresh).'}
                             </div>
-                        `;
-                    }
-                });
-            } catch(error) {
-                console.error('Setup error:', error);
+                        </div>
+                    `;
+                }
             }
         }
 
         async function loadInitialData() {
-            try {
-                const bookingsRef = window.collection(window.db, 'bookings');
-                const snapshot = await window.getDocs(bookingsRef);
-                
-                bookings = [];
-                snapshot.forEach((doc) => {
-                    bookings.push({
-                        firestoreId: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                console.log('📥 Initial data loaded:', bookings.length, 'bookings');
-            } catch(error) {
-                console.error('Load error:', error);
-            }
+            // Sudah ditangani oleh refreshFromSupabase saat setupFirebaseListeners
         }
 
         async function saveBooking(bookingData) {
             const statusEl = document.getElementById('firebaseStatus');
             statusEl.innerHTML = '<div class="pulse"></div><span>Saving...</span>';
             statusEl.className = 'firebase-status syncing';
-            
+
             try {
-                const bookingsRef = window.collection(window.db, 'bookings');
-                const docRef = await window.addDoc(bookingsRef, bookingData);
-                console.log('✅ Booking saved:', docRef.id);
-                return docRef.id;
+                const { data, error } = await window.supabase
+                    .from('bookings')
+                    .insert({ data: bookingData })
+                    .select('id')
+                    .single();
+
+                if(error) throw error;
+                console.log('✅ Booking saved:', data.id);
+                await refreshFromSupabase(false);
+                return data.id;
             } catch(error) {
                 console.error('Save error:', error);
-                alert('❌ Gagal menyimpan: ' + error.message);
+                alert('❌ Gagal menyimpan: ' + (error.message || error));
                 return null;
             }
         }
@@ -2028,14 +2022,24 @@
             const statusEl = document.getElementById('firebaseStatus');
             statusEl.innerHTML = '<div class="pulse"></div><span>Updating...</span>';
             statusEl.className = 'firebase-status syncing';
-            
+
             try {
-                const bookingRef = window.doc(window.db, 'bookings', firestoreId);
-                await window.updateDoc(bookingRef, updates);
+                // Merge: ambil data lama, gabung dengan updates, simpan kembali
+                const current = bookings.find(b => b.firestoreId === firestoreId) || {};
+                const merged = { ...current, ...updates };
+                delete merged.firestoreId;
+
+                const { error } = await window.supabase
+                    .from('bookings')
+                    .update({ data: merged })
+                    .eq('id', firestoreId);
+
+                if(error) throw error;
                 console.log('✅ Booking updated:', firestoreId);
+                await refreshFromSupabase(false);
             } catch(error) {
                 console.error('Update error:', error);
-                alert('❌ Gagal update: ' + error.message);
+                alert('❌ Gagal update: ' + (error.message || error));
             }
         }
 
@@ -2045,12 +2049,17 @@
             statusEl.className = 'firebase-status syncing';
 
             try {
-                const bookingRef = window.doc(window.db, 'bookings', firestoreId);
-                await window.deleteDoc(bookingRef);
+                const { error } = await window.supabase
+                    .from('bookings')
+                    .delete()
+                    .eq('id', firestoreId);
+
+                if(error) throw error;
                 console.log('🗑️ Booking deleted:', firestoreId);
+                await refreshFromSupabase(false);
             } catch(error) {
                 console.error('Delete error:', error);
-                alert('❌ Gagal hapus: ' + error.message);
+                alert('❌ Gagal hapus: ' + (error.message || error));
             }
         }
 
@@ -3746,8 +3755,8 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             });
         }
 
-        // Auto-check if Firebase is loaded
-        if(window.db) {
+        // Auto-check if Supabase is loaded
+        if(window.supabase) {
             window.initApp();
         }
     </script>
