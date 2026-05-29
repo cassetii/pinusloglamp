@@ -1244,6 +1244,129 @@
             font-size: 14px;
         }
 
+        /* ===== RECAP VIEW TOGGLE ===== */
+        .recap-view-toggle {
+            display: flex;
+            gap: 6px;
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 4px;
+            margin: 14px 0 16px;
+        }
+        .rv-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            border-radius: 9px;
+            padding: 9px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #8E8E93;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rv-btn.active {
+            background: #fff;
+            color: var(--green);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        /* ===== RECAP CARDS (mobile-friendly) ===== */
+        .recap-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            border-left: 4px solid var(--orange);
+        }
+        .rc-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .rc-tent {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--green);
+            line-height: 1.25;
+        }
+        .rc-pkg {
+            flex-shrink: 0;
+            background: var(--light-cream);
+            color: var(--green);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .rc-dates {
+            font-size: 13px;
+            color: #6b6b6b;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        .rc-pay {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed rgba(0,0,0,0.1);
+        }
+        .rc-pay-col {
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        .rc-pay-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #8E8E93;
+        }
+        .rc-pay-amount {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--green);
+            margin-top: 4px;
+            line-height: 1.2;
+        }
+        .rc-pay-amount.zero { color: #c7c1b8; font-weight: 600; }
+        .rc-pay-method {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-top: 6px;
+        }
+        .rc-pay-method.tunai { background: #d7f0d9; color: #2E7D32; }
+        .rc-pay-method.qris  { background: #d9ecff; color: #0a6cd4; }
+        .rc-card-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--cream);
+        }
+        .rc-card-foot span {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #8E8E93;
+        }
+        .rc-card-foot strong {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--orange);
+        }
+
         /* 6 tabs need to fit in the 430px bar */
         .tab-item {
             flex: 1;
@@ -1578,9 +1701,12 @@
                     📊 Export Rincian ke Excel
                 </button>
 
-                <div class="recap-scroll">
-                    <div id="recapTableContainer"></div>
+                <div class="recap-view-toggle">
+                    <button class="rv-btn active" data-recap-view="card">📇 Kartu</button>
+                    <button class="rv-btn" data-recap-view="table">📊 Tabel</button>
                 </div>
+
+                <div id="recapTableContainer"></div>
             </div>
         </div>
 
@@ -1674,6 +1800,7 @@
         let recapEndDate = '';
         let recapMethodFilter = 'all';
         let recapSearchQuery = '';
+        let recapView = 'card';
         let currentBookingId = null;
         let selectedTentFilter = 'all';
         let currentView = 'calendar';
@@ -1983,6 +2110,16 @@
                 recapEndEl.value = '';
                 setActivePeriodChip('all');
                 renderRecap();
+            });
+
+            // Toggle tampilan Kartu / Tabel
+            document.querySelectorAll('[data-recap-view]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-recap-view]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    recapView = btn.dataset.recapView;
+                    renderRecap();
+                });
             });
         }
 
@@ -2901,6 +3038,17 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             });
         }
 
+        function formatRecapDateShort(dateStr) {
+            if(!dateStr) return '-';
+            const d = new Date(dateStr);
+            if(isNaN(d)) return '-';
+            return d.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
         function getRecapRows() {
             // Semua reservasi kecuali yang ditolak, urut berdasarkan tanggal check-in
             return [...bookings]
@@ -3030,7 +3178,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             document.getElementById('rcTunai').textContent = 'Rp ' + masukTunai.toLocaleString('id-ID');
             document.getElementById('rcQris').textContent = 'Rp ' + masukQris.toLocaleString('id-ID');
 
-            // ----- TABEL -----
+            // ----- DAFTAR (KARTU / TABEL) -----
             if(rows.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state" style="padding:40px 20px;">
@@ -3041,6 +3189,52 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 return;
             }
 
+            if(recapView === 'card') {
+                const payBox = (label, amount, method) => {
+                    if(amount > 0) {
+                        return `
+                            <div class="rc-pay-col">
+                                <div class="rc-pay-label">${label}</div>
+                                <div class="rc-pay-amount">Rp ${Number(amount).toLocaleString('id-ID')}</div>
+                                <div class="rc-pay-method ${method}">${method === 'tunai' ? '💵 Tunai' : '📱 QRIS'}</div>
+                            </div>
+                        `;
+                    }
+                    return `
+                        <div class="rc-pay-col">
+                            <div class="rc-pay-label">${label}</div>
+                            <div class="rc-pay-amount zero">—</div>
+                        </div>
+                    `;
+                };
+
+                container.innerHTML = rowData.map(({ b, dpTunai, dpQris, sisaTunai, sisaQris }) => {
+                    const dpAmount = dpTunai + dpQris;
+                    const dpMethod = dpTunai > 0 ? 'tunai' : 'qris';
+                    const sisaAmount = sisaTunai + sisaQris;
+                    const sisaMethod = sisaTunai > 0 ? 'tunai' : 'qris';
+                    return `
+                        <div class="recap-card">
+                            <div class="rc-card-head">
+                                <div class="rc-tent">${(b.tenda || []).join(', ')}</div>
+                                <span class="rc-pkg">${b.paket || '-'}</span>
+                            </div>
+                            <div class="rc-dates">📅 ${formatRecapDateShort(b.checkin)} → ${formatRecapDateShort(b.checkout)}</div>
+                            <div class="rc-pay">
+                                ${payBox('Down Payment', dpAmount, dpMethod)}
+                                ${payBox('Sisa Pembayaran', sisaAmount, sisaMethod)}
+                            </div>
+                            <div class="rc-card-foot">
+                                <span>Harga Paket</span>
+                                <strong>Rp ${Number(b.harga || 0).toLocaleString('id-ID')}</strong>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return;
+            }
+
+            // ----- TAMPILAN TABEL -----
             const cell = (val) => val > 0
                 ? `<td class="amount">${num(val)}</td>`
                 : `<td class="amount muted">-</td>`;
@@ -3060,6 +3254,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             `).join('');
 
             container.innerHTML = `
+                <div class="recap-scroll">
                 <table class="recap-table">
                     <thead>
                         <tr>
@@ -3092,6 +3287,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                         </tr>
                     </tfoot>
                 </table>
+                </div>
             `;
         }
 
