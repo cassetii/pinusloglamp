@@ -461,6 +461,19 @@
             color: #C62828;
         }
 
+        .status-reservasi {
+            background: #FFF3CD;
+            color: #856404;
+        }
+        .status-dp {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+        .status-lunas {
+            background: #C8E6C9;
+            color: #2E7D32;
+        }
+
         .history-details {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -504,6 +517,59 @@
 
         .action-buttons button {
             flex: 1;
+        }
+
+        /* ===== PAYMENT STAGE STEPPER ===== */
+        .pay-stepper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--cream);
+        }
+        .pay-step {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 2px;
+            border-radius: 8px;
+            background: var(--cream);
+            color: #b0aca3;
+        }
+        .pay-step.done { background: #d7f0d9; color: #2E7D32; }
+        .pay-step.current { background: var(--orange); color: #fff; }
+        .pay-arrow { color: #d0ccc3; font-size: 12px; flex: 0 0 auto; }
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-success {
+            background: var(--green);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-ghost {
+            background: var(--cream);
+            color: #8E8E93;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
         }
 
         .stat-card {
@@ -1082,7 +1148,7 @@
         .recap-table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 760px;
+            min-width: 880px;
             font-size: 12px;
         }
 
@@ -1287,6 +1353,12 @@
             gap: 10px;
         }
         .rc-tent {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b6b6b;
+            margin-top: 6px;
+        }
+        .rc-name {
             font-size: 16px;
             font-weight: 800;
             color: var(--green);
@@ -1569,10 +1641,9 @@
 
             <div class="filter-chips">
                 <button class="filter-chip active" data-filter="all">Semua</button>
-                <button class="filter-chip" data-filter="pending">Pending</button>
-                <button class="filter-chip" data-filter="waiting">Menunggu</button>
-                <button class="filter-chip" data-filter="paid">Dibayar</button>
-                <button class="filter-chip" data-filter="confirmed">Confirmed</button>
+                <button class="filter-chip" data-filter="reservasi">Reservasi</button>
+                <button class="filter-chip" data-filter="dp">DP</button>
+                <button class="filter-chip" data-filter="lunas">Lunas</button>
             </div>
 
             <button class="export-btn" id="exportExcel">
@@ -1665,7 +1736,7 @@
             <div class="card">
                 <div class="search-box">
                     <span>🔍</span>
-                    <input type="text" id="recapSearch" placeholder="Cari tenda, paket, atau tanggal...">
+                    <input type="text" id="recapSearch" placeholder="Cari nama, tenda, paket, atau tanggal...">
                 </div>
 
                 <div class="recap-filter-label">Filter Periode</div>
@@ -1942,6 +2013,54 @@
             }
         }
 
+        async function deleteBooking(firestoreId) {
+            const statusEl = document.getElementById('firebaseStatus');
+            statusEl.innerHTML = '<div class="pulse"></div><span>Deleting...</span>';
+            statusEl.className = 'firebase-status syncing';
+
+            try {
+                const bookingRef = window.doc(window.db, 'bookings', firestoreId);
+                await window.deleteDoc(bookingRef);
+                console.log('🗑️ Booking deleted:', firestoreId);
+            } catch(error) {
+                console.error('Delete error:', error);
+                alert('❌ Gagal hapus: ' + error.message);
+            }
+        }
+
+        // ===== ALUR PEMBAYARAN: Reservasi -> DP -> Lunas =====
+        function getPayStage(b) {
+            if(b.payStage) return b.payStage;
+            // Derive untuk data lama yang belum punya payStage
+            const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0));
+            if(sisa <= 0 && (b.harga || 0) > 0) return 'lunas';
+            if((b.dp || 0) > 0) return 'dp';
+            return 'reservasi';
+        }
+
+        function payStageLabel(s) {
+            return { reservasi: 'Reservasi', dp: 'DP', lunas: 'Lunas' }[s] || s;
+        }
+
+        // Naikkan / ubah tahap pembayaran
+        window.setPayStage = async function(firestoreId, stage) {
+            await updateBooking(firestoreId, { payStage: stage });
+        };
+
+        // Hapus reservasi (hanya jika belum Lunas)
+        window.confirmDeleteBooking = async function(firestoreId) {
+            const b = bookings.find(x => x.firestoreId === firestoreId);
+            if(!b) return;
+            if(getPayStage(b) === 'lunas') {
+                alert('Reservasi yang sudah LUNAS tidak bisa dihapus.\nBatalkan status lunas dulu jika memang perlu menghapus.');
+                return;
+            }
+            const ok = confirm(`Hapus reservasi atas nama "${b.nama || '-'}"?\n\nTindakan ini permanen dan tidak bisa dibatalkan.`);
+            if(ok) {
+                await deleteBooking(firestoreId);
+            }
+        };
+
         function setupEventListeners() {
             // Tab navigation
             document.querySelectorAll('.tab-item').forEach(btn => {
@@ -2213,6 +2332,7 @@
                 dpMethod: document.getElementById('dpMethod').value,
                 sisaMethod: document.getElementById('sisaMethod').value,
                 status: 'pending',
+                payStage: 'reservasi',
                 paymentProof: null,
                 createdAt: new Date().toISOString(),
                 expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -2707,6 +2827,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     dpMethod: document.getElementById('qbDpMethod').value,
                     sisaMethod: document.getElementById('qbSisaMethod').value,
                     status: 'pending',
+                    payStage: 'reservasi',
                     paymentProof: null,
                     createdAt: new Date().toISOString(),
                     expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -2789,7 +2910,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             let filtered = [...bookings];
             
             if(currentFilter !== 'all') {
-                filtered = filtered.filter(b => b.status === currentFilter);
+                filtered = filtered.filter(b => getPayStage(b) === currentFilter);
             }
             
             if(searchQuery) {
@@ -2812,16 +2933,42 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             }
             
             container.innerHTML = filtered.map(b => {
-                const expiryDate = new Date(b.expiryDate);
-                const now = new Date();
-                const hoursLeft = Math.max(0, Math.floor((expiryDate - now) / (1000 * 60 * 60)));
-                const showCountdown = b.status === 'pending' && hoursLeft > 0;
-                
+                const stage = getPayStage(b);
+
+                // Stepper Reservasi -> DP -> Lunas
+                const order = ['reservasi', 'dp', 'lunas'];
+                const idx = order.indexOf(stage);
+                const stepClass = (i) => i < idx ? 'done' : (i === idx ? 'current' : '');
+                const stepper = `
+                    <div class="pay-stepper">
+                        <div class="pay-step ${stepClass(0)}">Reservasi</div>
+                        <span class="pay-arrow">›</span>
+                        <div class="pay-step ${stepClass(1)}">DP</div>
+                        <span class="pay-arrow">›</span>
+                        <div class="pay-step ${stepClass(2)}">Lunas</div>
+                    </div>
+                `;
+
+                // Tombol maju tahap
+                let advanceBtn = '';
+                if(stage === 'reservasi') {
+                    advanceBtn = `<button class="btn-success" onclick="setPayStage('${b.firestoreId}', 'dp')">✓ Tandai DP</button>`;
+                } else if(stage === 'dp') {
+                    advanceBtn = `<button class="btn-success" onclick="setPayStage('${b.firestoreId}', 'lunas')">✓ Tandai Lunas</button>`;
+                } else if(stage === 'lunas') {
+                    advanceBtn = `<button class="btn-ghost" onclick="setPayStage('${b.firestoreId}', 'dp')">↩ Batalkan Lunas</button>`;
+                }
+
+                // Tombol hapus hanya jika belum lunas
+                const deleteBtn = stage !== 'lunas'
+                    ? `<button class="btn-danger" onclick="confirmDeleteBooking('${b.firestoreId}')">🗑️ Hapus</button>`
+                    : '';
+
                 return `
                     <div class="history-item">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <div class="booking-id" style="margin: 0;">${b.id}</div>
-                            <div class="status-badge status-${b.status}">${getStatusText(b.status)}</div>
+                            <div class="status-badge status-${stage}">${payStageLabel(stage)}</div>
                         </div>
                         <div class="history-header">
                             <div>
@@ -2847,28 +2994,19 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                                 <span class="detail-value">${formatRupiah(b.sisa)}</span>
                             </div>
                         </div>
-                        ${showCountdown ? `
-                            <div class="countdown-timer">
-                                ⏰ ${hoursLeft} jam lagi untuk upload bukti bayar
-                            </div>
-                        ` : ''}
-                        ${b.status === 'pending' ? `
-                            <div class="action-buttons">
-                                <button class="btn-primary" onclick="showPaymentModal('${b.id}')">
-                                    💳 Bayar Sekarang
-                                </button>
-                            </div>
-                        ` : ''}
-                        ${b.status === 'confirmed' || b.status === 'paid' ? `
-                            <div class="action-buttons">
-                                <button class="btn-whatsapp" onclick="shareToWhatsApp('${b.id}')">
-                                    📱 Kirim ke WA
-                                </button>
-                                <button class="btn-primary" onclick="generatePDF(${JSON.stringify(b).replace(/"/g, '&quot;')})">
-                                    📄 PDF
-                                </button>
-                            </div>
-                        ` : ''}
+                        ${stepper}
+                        <div class="action-buttons" style="flex-direction: column;">
+                            ${advanceBtn}
+                            ${deleteBtn}
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-whatsapp" onclick="shareToWhatsApp('${b.id}')">
+                                📱 WA
+                            </button>
+                            <button class="btn-primary" onclick="generatePDF(${JSON.stringify(b).replace(/"/g, '&quot;')})">
+                                📄 PDF
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -3102,6 +3240,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             if(recapSearchQuery) {
                 const q = recapSearchQuery.toLowerCase();
                 rows = rows.filter(b =>
+                    (b.nama || '').toLowerCase().includes(q) ||
                     (b.tenda || []).join(' ').toLowerCase().includes(q) ||
                     (b.paket || '').toLowerCase().includes(q) ||
                     (b.checkin || '').includes(q) ||
@@ -3185,9 +3324,9 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             // ----- UPDATE DASHBOARD -----
             const masukTunai = totalDpTunai + totalSisaTunai;
             const masukQris = totalDpQris + totalSisaQris;
-            // "Belum lunas" = sisa dari booking yang belum paid/confirmed
+            // "Belum lunas" = sisa dari booking yang belum berstatus Lunas
             const outstanding = rows
-                .filter(b => !['paid', 'confirmed'].includes(b.status))
+                .filter(b => getPayStage(b) !== 'lunas')
                 .reduce((s, b) => s + ((b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0))), 0);
 
             document.getElementById('rcRevenue').textContent = 'Rp ' + (totalHarga).toLocaleString('id-ID');
@@ -3236,9 +3375,10 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     return `
                         <div class="recap-card">
                             <div class="rc-card-head">
-                                <div class="rc-tent">${(b.tenda || []).join(', ')}</div>
+                                <div class="rc-name">${b.nama || 'Tanpa Nama'}</div>
                                 <span class="rc-pkg">${b.paket || '-'}</span>
                             </div>
+                            <div class="rc-tent">🏕️ ${(b.tenda || []).join(', ')}</div>
                             <div class="rc-dates">📅 ${formatRecapDateShort(b.checkin)} → ${formatRecapDateShort(b.checkout)}</div>
                             <div class="rc-pay">
                                 ${payBox('Down Payment', dpAmount, dpMethod)}
@@ -3261,6 +3401,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
 
             const body = rowData.map(({ b, dpTunai, dpQris, sisaTunai, sisaQris }) => `
                 <tr>
+                    <td class="text-left">${b.nama || '-'}</td>
                     <td class="text-left">${formatRecapDate(b.checkin)}</td>
                     <td class="text-left">${formatRecapDate(b.checkout)}</td>
                     <td class="text-left">${(b.tenda || []).join(', ')}</td>
@@ -3278,6 +3419,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 <table class="recap-table">
                     <thead>
                         <tr>
+                            <th rowspan="2">Nama Pemesan</th>
                             <th rowspan="2">Tgl Check-in</th>
                             <th rowspan="2">Tgl Check-out</th>
                             <th rowspan="2">Tipe Tenda</th>
@@ -3298,7 +3440,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td class="text-left" colspan="4">TOTAL</td>
+                            <td class="text-left" colspan="5">TOTAL</td>
                             <td class="amount">${num(totalDpTunai) || '0'}</td>
                             <td class="amount">${num(totalDpQris) || '0'}</td>
                             <td class="amount">${num(totalSisaTunai) || '0'}</td>
@@ -3323,6 +3465,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 const dp = b.dp || 0;
                 const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - dp);
                 return {
+                    'Nama Pemesan': b.nama || '',
                     'Tgl Check-in': formatRecapDate(b.checkin),
                     'Tgl Check-out': formatRecapDate(b.checkout),
                     'Tipe Tenda': (b.tenda || []).join(', '),
