@@ -59,6 +59,7 @@
             --red: #FF3B30;
             --blue: #007AFF;
             --yellow: #FFCC00;
+            --recap-brown: #7A4A2A;
         }
 
         * {
@@ -1058,6 +1059,88 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* ===== RINCIAN (RECAP) TAB ===== */
+        .recap-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .recap-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: white;
+        }
+
+        .recap-table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 760px;
+            font-size: 12px;
+        }
+
+        .recap-table th,
+        .recap-table td {
+            border: 1px solid rgba(0,0,0,0.12);
+            padding: 8px 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .recap-table thead th {
+            background: var(--recap-brown);
+            color: #fff;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .recap-table thead th.sub {
+            font-style: italic;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .recap-table td.text-left {
+            text-align: left;
+        }
+
+        .recap-table td.amount {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .recap-table tbody tr:nth-child(even) td {
+            background: #faf6f0;
+        }
+
+        .recap-table tfoot td {
+            background: var(--light-cream);
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .recap-table td.muted {
+            color: #c7c1b8;
+        }
+
+        /* 6 tabs need to fit in the 430px bar */
+        .tab-item {
+            flex: 1;
+            padding: 8px 4px;
+            min-width: 0;
+        }
+        .tab-item div:last-child {
+            font-size: 10px;
+            line-height: 1.1;
+        }
     </style>
 </head>
 <body>
@@ -1122,8 +1205,24 @@
                     </div>
 
                     <div class="form-section">
+                        <label class="form-label">Metode DP</label>
+                        <select class="form-select" id="dpMethod">
+                            <option value="qris">QRIS</option>
+                            <option value="tunai">Tunai</option>
+                        </select>
+                    </div>
+
+                    <div class="form-section">
                         <label class="form-label">Sisa Pelunasan</label>
                         <input type="text" class="form-control" id="sisaPelunasan" readonly placeholder="Auto calculate">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Metode Sisa</label>
+                        <select class="form-select" id="sisaMethod">
+                            <option value="tunai">Tunai</option>
+                            <option value="qris">QRIS</option>
+                        </select>
                     </div>
 
                     <div id="multiBookingContainer"></div>
@@ -1291,6 +1390,21 @@
             </div>
         </div>
 
+        <!-- RINCIAN / RECAP TAB -->
+        <div class="content" id="recapTab">
+            <div class="card">
+                <div class="recap-title">Rincian Penyewaan Glamping &amp; Semi Glamping</div>
+
+                <button class="export-btn" id="exportRecap">
+                    📊 Export Rincian ke Excel
+                </button>
+
+                <div class="recap-scroll">
+                    <div id="recapTableContainer"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ADMIN TAB -->
         <div class="content" id="adminTab">
             <div class="card">
@@ -1323,6 +1437,10 @@
             <button class="tab-item" data-tab="analyticsTab">
                 <div class="tab-icon">📈</div>
                 <div>Analitik</div>
+            </button>
+            <button class="tab-item" data-tab="recapTab">
+                <div class="tab-icon">📋</div>
+                <div>Rincian</div>
             </button>
             <button class="tab-item" data-tab="adminTab">
                 <div class="tab-icon">👤</div>
@@ -1430,6 +1548,7 @@
                     renderHistory();
                     renderCalendar();
                     renderAnalytics();
+                    renderRecap();
                     
                     document.getElementById('loadingOverlay').classList.add('hidden');
                 }, (error) => {
@@ -1506,6 +1625,7 @@
                     if(tabId === 'calendarTab') renderCalendar();
                     if(tabId === 'historyTab') renderHistory();
                     if(tabId === 'analyticsTab') renderAnalytics();
+                    if(tabId === 'recapTab') renderRecap();
                     if(tabId === 'adminTab') renderAdmin();
                 });
             });
@@ -1630,6 +1750,7 @@
             // Export
             document.getElementById('exportExcel').addEventListener('click', exportExcel);
             document.getElementById('exportCSV').addEventListener('click', exportCSV);
+            document.getElementById('exportRecap').addEventListener('click', exportRecap);
         }
 
         function calculateSisa() {
@@ -1699,6 +1820,8 @@
                 checkout: checkout,
                 dp: dp,
                 sisa: harga - dp,
+                dpMethod: document.getElementById('dpMethod').value,
+                sisaMethod: document.getElementById('sisaMethod').value,
                 status: 'pending',
                 paymentProof: null,
                 createdAt: new Date().toISOString(),
@@ -2101,6 +2224,22 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                         <input type="text" class="form-control" id="qbDP" required placeholder="Rp 0">
                     </div>
 
+                    <div class="form-section">
+                        <label class="form-label">Metode DP</label>
+                        <select class="form-select" id="qbDpMethod">
+                            <option value="qris">QRIS</option>
+                            <option value="tunai">Tunai</option>
+                        </select>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label">Metode Sisa</label>
+                        <select class="form-select" id="qbSisaMethod">
+                            <option value="tunai">Tunai</option>
+                            <option value="qris">QRIS</option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="btn-primary">
                         <span>✓</span> Buat Reservasi
                     </button>
@@ -2175,6 +2314,8 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     checkout: checkout,
                     dp: dp,
                     sisa: harga - dp,
+                    dpMethod: document.getElementById('qbDpMethod').value,
+                    sisaMethod: document.getElementById('qbSisaMethod').value,
                     status: 'pending',
                     paymentProof: null,
                     createdAt: new Date().toISOString(),
@@ -2512,6 +2653,145 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     maintainAspectRatio: false
                 }
             });
+        }
+
+        // ===== RINCIAN / RECAP =====
+        function formatRecapDate(dateStr) {
+            if(!dateStr) return '-';
+            const d = new Date(dateStr);
+            if(isNaN(d)) return '-';
+            return d.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function getRecapRows() {
+            // Semua reservasi kecuali yang ditolak, urut berdasarkan tanggal check-in
+            return [...bookings]
+                .filter(b => b.status !== 'rejected')
+                .sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
+        }
+
+        function renderRecap() {
+            const rows = getRecapRows();
+            const container = document.getElementById('recapTableContainer');
+
+            if(rows.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding:40px 20px;">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">Belum ada data penyewaan</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const num = (v) => (v && v > 0) ? Number(v).toLocaleString('id-ID') : '';
+
+            let totalDpTunai = 0, totalDpQris = 0, totalSisaTunai = 0, totalSisaQris = 0, totalHarga = 0;
+
+            const body = rows.map(b => {
+                const dpMethod = (b.dpMethod || 'qris');      // default lama: QRIS
+                const sisaMethod = (b.sisaMethod || 'tunai'); // default lama: Tunai
+                const dp = b.dp || 0;
+                const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - dp);
+
+                const dpTunai = dpMethod === 'tunai' ? dp : 0;
+                const dpQris = dpMethod === 'qris' ? dp : 0;
+                const sisaTunai = sisaMethod === 'tunai' ? sisa : 0;
+                const sisaQris = sisaMethod === 'qris' ? sisa : 0;
+
+                totalDpTunai += dpTunai;
+                totalDpQris += dpQris;
+                totalSisaTunai += sisaTunai;
+                totalSisaQris += sisaQris;
+                totalHarga += (b.harga || 0);
+
+                const cell = (val) => val > 0
+                    ? `<td class="amount">${num(val)}</td>`
+                    : `<td class="amount muted">-</td>`;
+
+                return `
+                    <tr>
+                        <td class="text-left">${formatRecapDate(b.checkin)}</td>
+                        <td class="text-left">${formatRecapDate(b.checkout)}</td>
+                        <td class="text-left">${(b.tenda || []).join(', ')}</td>
+                        <td class="text-left">${b.paket || '-'}</td>
+                        ${cell(dpTunai)}
+                        ${cell(dpQris)}
+                        ${cell(sisaTunai)}
+                        ${cell(sisaQris)}
+                        <td class="amount">${num(b.harga || 0) || '0'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <table class="recap-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Tgl Check-in</th>
+                            <th rowspan="2">Tgl Check-out</th>
+                            <th rowspan="2">Tipe Tenda</th>
+                            <th rowspan="2">Jenis Paket</th>
+                            <th colspan="2">Down Payment</th>
+                            <th colspan="2">Sisa Pembayaran</th>
+                            <th rowspan="2">Harga Paket</th>
+                        </tr>
+                        <tr>
+                            <th class="sub">Tunai</th>
+                            <th class="sub">QRIS</th>
+                            <th class="sub">Tunai</th>
+                            <th class="sub">QRIS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${body}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="text-left" colspan="4">TOTAL</td>
+                            <td class="amount">${num(totalDpTunai) || '0'}</td>
+                            <td class="amount">${num(totalDpQris) || '0'}</td>
+                            <td class="amount">${num(totalSisaTunai) || '0'}</td>
+                            <td class="amount">${num(totalSisaQris) || '0'}</td>
+                            <td class="amount">${num(totalHarga) || '0'}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+        }
+
+        function exportRecap() {
+            const rows = getRecapRows();
+            if(rows.length === 0) {
+                alert('Belum ada data untuk diexport.');
+                return;
+            }
+            const data = rows.map(b => {
+                const dpMethod = (b.dpMethod || 'qris');
+                const sisaMethod = (b.sisaMethod || 'tunai');
+                const dp = b.dp || 0;
+                const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - dp);
+                return {
+                    'Tgl Check-in': formatRecapDate(b.checkin),
+                    'Tgl Check-out': formatRecapDate(b.checkout),
+                    'Tipe Tenda': (b.tenda || []).join(', '),
+                    'Jenis Paket': b.paket || '',
+                    'DP Tunai': dpMethod === 'tunai' ? dp : 0,
+                    'DP QRIS': dpMethod === 'qris' ? dp : 0,
+                    'Sisa Tunai': sisaMethod === 'tunai' ? sisa : 0,
+                    'Sisa QRIS': sisaMethod === 'qris' ? sisa : 0,
+                    'Harga Paket': b.harga || 0
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Rincian Penyewaan');
+            XLSX.writeFile(wb, `Pinuslo_Rincian_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
         // Export
