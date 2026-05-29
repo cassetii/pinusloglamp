@@ -473,6 +473,10 @@
             background: #C8E6C9;
             color: #2E7D32;
         }
+        .status-approved {
+            background: #E1D5F5;
+            color: #6A1B9A;
+        }
 
         .history-details {
             display: grid;
@@ -1439,14 +1443,15 @@
             color: var(--orange);
         }
 
-        /* 6 tabs need to fit in the 430px bar */
+        /* 7 tabs need to fit in the 430px bar */
         .tab-item {
             flex: 1;
-            padding: 8px 4px;
+            padding: 8px 2px;
             min-width: 0;
         }
+        .tab-icon { font-size: 21px; }
         .tab-item div:last-child {
-            font-size: 10px;
+            font-size: 9px;
             line-height: 1.1;
         }
     </style>
@@ -1544,6 +1549,12 @@
                     </button>
                 </form>
             </div>
+
+            <div class="card">
+                <h2 class="section-title">Proses Berjalan</h2>
+                <p style="color: #8E8E93; margin-bottom: 16px; font-size: 13px;">Reservasi → Bayar DP → Approved (di-approve di tab Admin)</p>
+                <div id="homeProcessList"></div>
+            </div>
         </div>
 
         <!-- CALENDAR TAB -->
@@ -1632,29 +1643,36 @@
             </div>
         </div>
 
-        <!-- HISTORY TAB -->
-        <div class="content" id="historyTab">
-            <div class="search-box">
-                <span>🔍</span>
-                <input type="text" id="searchInput" placeholder="Cari nama, tenda, atau tanggal...">
+        <!-- MENUNGGU PELUNASAN TAB -->
+        <div class="content" id="menungguTab">
+            <div class="card">
+                <h2 class="section-title">Menunggu Pelunasan</h2>
+                <p style="color: #8E8E93; margin-bottom: 16px; font-size: 13px;">Reservasi yang sudah di-approve, menunggu pelunasan. Klik <b>Lunas</b> kalau sudah dilunasi.</p>
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" id="menungguSearch" placeholder="Cari nama, tenda, atau tanggal...">
+                </div>
+                <div id="menungguList"></div>
             </div>
+        </div>
 
-            <div class="filter-chips">
-                <button class="filter-chip active" data-filter="all">Semua</button>
-                <button class="filter-chip" data-filter="reservasi">Reservasi</button>
-                <button class="filter-chip" data-filter="dp">DP</button>
-                <button class="filter-chip" data-filter="lunas">Lunas</button>
+        <!-- BAYAR (LUNAS) TAB -->
+        <div class="content" id="bayarTab">
+            <div class="card">
+                <h2 class="section-title">Bayar (Lunas)</h2>
+                <p style="color: #8E8E93; margin-bottom: 16px; font-size: 13px;">Rekaman reservasi yang sudah lunas.</p>
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" id="bayarSearch" placeholder="Cari nama, tenda, atau tanggal...">
+                </div>
+                <button class="export-btn" id="exportExcel">
+                    📊 Export ke Excel
+                </button>
+                <button class="export-btn" id="exportCSV" style="background: var(--blue);">
+                    📄 Export ke CSV
+                </button>
+                <div id="bayarList"></div>
             </div>
-
-            <button class="export-btn" id="exportExcel">
-                📊 Export ke Excel
-            </button>
-
-            <button class="export-btn" id="exportCSV" style="background: var(--blue);">
-                📄 Export ke CSV
-            </button>
-
-            <div id="historyList"></div>
         </div>
 
         <!-- ANALYTICS TAB -->
@@ -1806,9 +1824,14 @@
                 <div class="tab-icon">📅</div>
                 <div>Kalender</div>
             </button>
-            <button class="tab-item" data-tab="historyTab">
-                <div class="tab-icon">📜</div>
-                <div>Riwayat</div>
+            <button class="tab-item" data-tab="menungguTab">
+                <div class="tab-icon">⏳</div>
+                <div>Menunggu</div>
+                <span class="badge-notif" id="menungguBadge" style="display: none;">0</span>
+            </button>
+            <button class="tab-item" data-tab="bayarTab">
+                <div class="tab-icon">✅</div>
+                <div>Bayar</div>
             </button>
             <button class="tab-item" data-tab="analyticsTab">
                 <div class="tab-icon">📈</div>
@@ -1864,9 +1887,9 @@
         let multiTents = [];
         let currentCalendarDate = new Date();
         let currentMatrixDate = new Date();
-        let currentFilter = 'all';
         let currentAdminFilter = 'waiting';
-        let searchQuery = '';
+        let menungguSearchQuery = '';
+        let bayarSearchQuery = '';
         let recapStartDate = '';
         let recapEndDate = '';
         let recapMethodFilter = 'all';
@@ -1926,7 +1949,10 @@
                     statusEl.className = 'firebase-status';
                     
                     updateAdminBadge();
-                    renderHistory();
+                    updateMenungguBadge();
+                    renderHome();
+                    renderMenunggu();
+                    renderBayar();
                     renderCalendar();
                     renderAnalytics();
                     renderRecap();
@@ -2028,30 +2054,64 @@
             }
         }
 
-        // ===== ALUR PEMBAYARAN: Reservasi -> DP -> Lunas =====
-        function getPayStage(b) {
-            if(b.payStage) return b.payStage;
-            // Derive untuk data lama yang belum punya payStage
+        // ===== ALUR: Reservasi -> Bayar DP -> Approved (Menunggu) -> Lunas (Bayar) =====
+        // Status: 'reservasi' | 'waiting' | 'approved' | 'lunas' | 'rejected'
+        function flowStatus(b) {
+            if(b.flowStatus) return b.flowStatus;
+            // Derive untuk data lama
+            if(b.status === 'rejected') return 'rejected';
+            if(b.payStage === 'lunas') return 'lunas';
             const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0));
             if(sisa <= 0 && (b.harga || 0) > 0) return 'lunas';
-            if((b.dp || 0) > 0) return 'dp';
+            if(b.status === 'paid' || b.status === 'confirmed' || b.payStage === 'dp') return 'approved';
+            if(b.status === 'waiting') return 'waiting';
             return 'reservasi';
         }
 
-        function payStageLabel(s) {
-            return { reservasi: 'Reservasi', dp: 'DP', lunas: 'Lunas' }[s] || s;
+        function flowLabel(s) {
+            return {
+                reservasi: 'Reservasi',
+                waiting: 'Menunggu Approval',
+                approved: 'Menunggu Pelunasan',
+                lunas: 'Lunas',
+                rejected: 'Ditolak'
+            }[s] || s;
         }
 
-        // Naikkan / ubah tahap pembayaran
-        window.setPayStage = async function(firestoreId, stage) {
-            await updateBooking(firestoreId, { payStage: stage });
+        // HOME: tandai sudah bayar DP -> menunggu approval (di tab Admin)
+        window.markBayarDP = async function(firestoreId) {
+            await updateBooking(firestoreId, { flowStatus: 'waiting' });
+        };
+
+        // MENUNGGU: tandai lunas -> pindah ke window Bayar
+        window.markLunas = async function(firestoreId) {
+            const b = bookings.find(x => x.firestoreId === firestoreId);
+            const nama = b ? (b.nama || '-') : '-';
+            if(confirm(`Tandai LUNAS untuk reservasi "${nama}"?\nData akan tersimpan di window Bayar.`)) {
+                await updateBooking(firestoreId, { flowStatus: 'lunas', payStage: 'lunas' });
+            }
+        };
+
+        // BAYAR: batalkan lunas -> kembali ke Menunggu
+        window.batalkanLunas = async function(firestoreId) {
+            await updateBooking(firestoreId, { flowStatus: 'approved', payStage: 'dp' });
+        };
+
+        // MENUNGGU: batalkan approve -> kembali ke proses (menunggu approval di Admin)
+        window.batalkanApprove = async function(firestoreId) {
+            await updateBooking(firestoreId, { flowStatus: 'waiting', status: 'waiting', payStage: 'dp' });
+        };
+
+        // Kembalikan ke HOME (reservasi) - mis. salah tandai DP
+        window.batalkanDP = async function(firestoreId) {
+            await updateBooking(firestoreId, { flowStatus: 'reservasi' });
         };
 
         // Hapus reservasi (hanya jika belum Lunas)
         window.confirmDeleteBooking = async function(firestoreId) {
             const b = bookings.find(x => x.firestoreId === firestoreId);
             if(!b) return;
-            if(getPayStage(b) === 'lunas') {
+            if(flowStatus(b) === 'lunas') {
                 alert('Reservasi yang sudah LUNAS tidak bisa dihapus.\nBatalkan status lunas dulu jika memang perlu menghapus.');
                 return;
             }
@@ -2072,7 +2132,8 @@
                     document.getElementById(tabId).classList.add('active');
                     
                     if(tabId === 'calendarTab') renderCalendar();
-                    if(tabId === 'historyTab') renderHistory();
+                    if(tabId === 'menungguTab') renderMenunggu();
+                    if(tabId === 'bayarTab') renderBayar();
                     if(tabId === 'analyticsTab') renderAnalytics();
                     if(tabId === 'recapTab') renderRecap();
                     if(tabId === 'adminTab') renderAdmin();
@@ -2168,23 +2229,14 @@
                 renderMatrix();
             });
 
-            // Search and filter
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                searchQuery = e.target.value.toLowerCase();
-                renderHistory();
+            // Search Menunggu & Bayar
+            document.getElementById('menungguSearch').addEventListener('input', (e) => {
+                menungguSearchQuery = e.target.value.toLowerCase();
+                renderMenunggu();
             });
-
-            document.querySelectorAll('.filter-chip').forEach(chip => {
-                chip.addEventListener('click', (e) => {
-                    if(!e.target.dataset.adminFilter) {
-                        document.querySelectorAll('.filter-chip').forEach(c => {
-                            if(!c.dataset.adminFilter) c.classList.remove('active');
-                        });
-                        e.target.classList.add('active');
-                        currentFilter = e.target.dataset.filter;
-                        renderHistory();
-                    }
-                });
+            document.getElementById('bayarSearch').addEventListener('input', (e) => {
+                bayarSearchQuery = e.target.value.toLowerCase();
+                renderBayar();
             });
 
             document.querySelectorAll('[data-admin-filter]').forEach(chip => {
@@ -2333,6 +2385,7 @@
                 sisaMethod: document.getElementById('sisaMethod').value,
                 status: 'pending',
                 payStage: 'reservasi',
+                flowStatus: 'reservasi',
                 paymentProof: null,
                 createdAt: new Date().toISOString(),
                 expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -2356,7 +2409,7 @@
             const checkoutDate = new Date(checkout);
             
             bookings.forEach(booking => {
-                if(['confirmed', 'paid', 'waiting'].includes(booking.status)) {
+                if(flowStatus(booking) !== 'rejected') {
                     const bookingCheckin = new Date(booking.checkin);
                     const bookingCheckout = new Date(booking.checkout);
                     
@@ -2376,10 +2429,22 @@
         }
 
         function updateAdminBadge() {
-            const waiting = bookings.filter(b => b.status === 'waiting').length;
+            const waiting = bookings.filter(b => flowStatus(b) === 'waiting').length;
             const badge = document.getElementById('adminBadge');
             if(waiting > 0) {
                 badge.textContent = waiting;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function updateMenungguBadge() {
+            const count = bookings.filter(b => flowStatus(b) === 'approved').length;
+            const badge = document.getElementById('menungguBadge');
+            if(!badge) return;
+            if(count > 0) {
+                badge.textContent = count;
                 badge.style.display = 'block';
             } else {
                 badge.style.display = 'none';
@@ -2530,7 +2595,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 let bookedCount = 0;
                 
                 bookings.forEach(b => {
-                    if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                    if(flowStatus(b) !== 'rejected' &&
                        dateStr >= b.checkin && dateStr <= b.checkout) {
                         b.tenda.forEach(t => {
                             if(tentsToCheck.includes(t)) {
@@ -2588,7 +2653,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             });
             
             bookings.forEach(b => {
-                if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                if(flowStatus(b) !== 'rejected' &&
                    dateStr >= b.checkin && dateStr <= b.checkout) {
                     b.tenda.forEach(t => {
                         if(tentStatus[t]) {
@@ -2828,6 +2893,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     sisaMethod: document.getElementById('qbSisaMethod').value,
                     status: 'pending',
                     payStage: 'reservasi',
+                flowStatus: 'reservasi',
                     paymentProof: null,
                     createdAt: new Date().toISOString(),
                     expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -2879,7 +2945,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                     
                     let isBooked = false;
                     bookings.forEach(b => {
-                        if(['confirmed', 'paid', 'waiting'].includes(b.status) &&
+                        if(flowStatus(b) !== 'rejected' &&
                            dateStr >= b.checkin && dateStr <= b.checkout &&
                            b.tenda.includes(tent)) {
                             isBooked = true;
@@ -2904,112 +2970,164 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             container.innerHTML = html;
         }
 
-        // History
-        function renderHistory() {
-            const container = document.getElementById('historyList');
-            let filtered = [...bookings];
-            
-            if(currentFilter !== 'all') {
-                filtered = filtered.filter(b => getPayStage(b) === currentFilter);
-            }
-            
-            if(searchQuery) {
-                filtered = filtered.filter(b => 
-                    b.nama.toLowerCase().includes(searchQuery) ||
-                    b.tenda.some(t => t.toLowerCase().includes(searchQuery)) ||
-                    b.checkin.includes(searchQuery) ||
-                    b.id.toLowerCase().includes(searchQuery)
-                );
-            }
-            
-            if(filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <div class="empty-text">Tidak ada reservasi ditemukan</div>
+        // ===== Helper kartu booking & pencarian =====
+        function matchBookingSearch(b, q) {
+            if(!q) return true;
+            return (b.nama || '').toLowerCase().includes(q) ||
+                (b.tenda || []).some(t => t.toLowerCase().includes(q)) ||
+                (b.checkin || '').includes(q) ||
+                (b.id || '').toLowerCase().includes(q);
+        }
+
+        function emptyStateHTML(icon, text) {
+            return `
+                <div class="empty-state">
+                    <div class="empty-icon">${icon}</div>
+                    <div class="empty-text">${text}</div>
+                </div>
+            `;
+        }
+
+        function flowStepper(status) {
+            const order = ['reservasi', 'waiting', 'approved', 'lunas'];
+            const labels = ['Reservasi', 'DP', 'Approved', 'Lunas'];
+            const idx = order.indexOf(status);
+            return '<div class="pay-stepper">' + labels.map((lab, i) => {
+                const cls = i < idx ? 'done' : (i === idx ? 'current' : '');
+                const step = `<div class="pay-step ${cls}">${lab}</div>`;
+                return step + (i < labels.length - 1 ? '<span class="pay-arrow">›</span>' : '');
+            }).join('') + '</div>';
+        }
+
+        function bookingDetailHTML(b, statusClass) {
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div class="booking-id" style="margin: 0;">${b.id}</div>
+                    <div class="status-badge status-${statusClass}">${flowLabel(statusClass)}</div>
+                </div>
+                <div class="history-header">
+                    <div>
+                        <div class="history-name">${b.nama || '-'}</div>
+                        <div class="history-tent">${(b.tenda || []).join(', ')}</div>
                     </div>
-                `;
+                </div>
+                <div class="history-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Check-in</span>
+                        <span class="detail-value">${formatDate(b.checkin)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Check-out</span>
+                        <span class="detail-value">${formatDate(b.checkout)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Total</span>
+                        <span class="detail-value">${formatRupiah(b.harga)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sisa</span>
+                        <span class="detail-value">${formatRupiah(b.sisa)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function waButtonsHTML(b) {
+            return `
+                <div class="action-buttons">
+                    <button class="btn-whatsapp" onclick="shareToWhatsApp('${b.id}')">📱 WA</button>
+                    <button class="btn-primary" onclick="generatePDF(${JSON.stringify(b).replace(/"/g, '&quot;')})">📄 PDF</button>
+                </div>
+            `;
+        }
+
+        // ===== HOME: Proses berjalan (Reservasi & Menunggu Approval) =====
+        function renderHome() {
+            const container = document.getElementById('homeProcessList');
+            if(!container) return;
+            const rows = bookings
+                .filter(b => ['reservasi', 'waiting'].includes(flowStatus(b)))
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+            if(rows.length === 0) {
+                container.innerHTML = emptyStateHTML('🗂️', 'Belum ada proses berjalan');
                 return;
             }
-            
-            container.innerHTML = filtered.map(b => {
-                const stage = getPayStage(b);
 
-                // Stepper Reservasi -> DP -> Lunas
-                const order = ['reservasi', 'dp', 'lunas'];
-                const idx = order.indexOf(stage);
-                const stepClass = (i) => i < idx ? 'done' : (i === idx ? 'current' : '');
-                const stepper = `
-                    <div class="pay-stepper">
-                        <div class="pay-step ${stepClass(0)}">Reservasi</div>
-                        <span class="pay-arrow">›</span>
-                        <div class="pay-step ${stepClass(1)}">DP</div>
-                        <span class="pay-arrow">›</span>
-                        <div class="pay-step ${stepClass(2)}">Lunas</div>
-                    </div>
-                `;
-
-                // Tombol maju tahap
-                let advanceBtn = '';
-                if(stage === 'reservasi') {
-                    advanceBtn = `<button class="btn-success" onclick="setPayStage('${b.firestoreId}', 'dp')">✓ Tandai DP</button>`;
-                } else if(stage === 'dp') {
-                    advanceBtn = `<button class="btn-success" onclick="setPayStage('${b.firestoreId}', 'lunas')">✓ Tandai Lunas</button>`;
-                } else if(stage === 'lunas') {
-                    advanceBtn = `<button class="btn-ghost" onclick="setPayStage('${b.firestoreId}', 'dp')">↩ Batalkan Lunas</button>`;
+            container.innerHTML = rows.map(b => {
+                const s = flowStatus(b);
+                let actions = '';
+                let note = '';
+                if(s === 'reservasi') {
+                    actions = `<button class="btn-success" onclick="markBayarDP('${b.firestoreId}')">💳 Sudah Bayar DP</button>`;
+                } else if(s === 'waiting') {
+                    actions = `<button class="btn-ghost" onclick="batalkanDP('${b.firestoreId}')">↩ Batal DP</button>`;
+                    note = `<div style="font-size:12px; color:#1565C0; margin-top:8px; font-weight:600;">⏳ Menunggu di-approve di tab Admin</div>`;
                 }
-
-                // Tombol hapus hanya jika belum lunas
-                const deleteBtn = stage !== 'lunas'
-                    ? `<button class="btn-danger" onclick="confirmDeleteBooking('${b.firestoreId}')">🗑️ Hapus</button>`
-                    : '';
-
                 return `
                     <div class="history-item">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <div class="booking-id" style="margin: 0;">${b.id}</div>
-                            <div class="status-badge status-${stage}">${payStageLabel(stage)}</div>
-                        </div>
-                        <div class="history-header">
-                            <div>
-                                <div class="history-name">${b.nama}</div>
-                                <div class="history-tent">${b.tenda.join(', ')}</div>
-                            </div>
-                        </div>
-                        <div class="history-details">
-                            <div class="detail-item">
-                                <span class="detail-label">Check-in</span>
-                                <span class="detail-value">${formatDate(b.checkin)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Check-out</span>
-                                <span class="detail-value">${formatDate(b.checkout)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Total</span>
-                                <span class="detail-value">${formatRupiah(b.harga)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Sisa</span>
-                                <span class="detail-value">${formatRupiah(b.sisa)}</span>
-                            </div>
-                        </div>
-                        ${stepper}
+                        ${bookingDetailHTML(b, s)}
+                        ${flowStepper(s)}
+                        ${note}
                         <div class="action-buttons" style="flex-direction: column;">
-                            ${advanceBtn}
-                            ${deleteBtn}
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn-whatsapp" onclick="shareToWhatsApp('${b.id}')">
-                                📱 WA
-                            </button>
-                            <button class="btn-primary" onclick="generatePDF(${JSON.stringify(b).replace(/"/g, '&quot;')})">
-                                📄 PDF
-                            </button>
+                            ${actions}
+                            <button class="btn-danger" onclick="confirmDeleteBooking('${b.firestoreId}')">🗑️ Hapus</button>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // ===== MENUNGGU: sudah approved, menunggu pelunasan =====
+        function renderMenunggu() {
+            const container = document.getElementById('menungguList');
+            if(!container) return;
+            let rows = bookings.filter(b => flowStatus(b) === 'approved');
+            rows = rows.filter(b => matchBookingSearch(b, menungguSearchQuery));
+            rows.sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
+
+            if(rows.length === 0) {
+                container.innerHTML = emptyStateHTML('⏳', 'Tidak ada yang menunggu pelunasan');
+                return;
+            }
+
+            container.innerHTML = rows.map(b => `
+                <div class="history-item">
+                    ${bookingDetailHTML(b, 'approved')}
+                    ${flowStepper('approved')}
+                    <div class="action-buttons" style="flex-direction: column;">
+                        <button class="btn-success" onclick="markLunas('${b.firestoreId}')">✓ Tandai Lunas</button>
+                        <button class="btn-ghost" onclick="batalkanApprove('${b.firestoreId}')">↩ Batalkan Approve</button>
+                        <button class="btn-danger" onclick="confirmDeleteBooking('${b.firestoreId}')">🗑️ Hapus</button>
+                    </div>
+                    ${waButtonsHTML(b)}
+                </div>
+            `).join('');
+        }
+
+        // ===== BAYAR: rekaman lunas =====
+        function renderBayar() {
+            const container = document.getElementById('bayarList');
+            if(!container) return;
+            let rows = bookings.filter(b => flowStatus(b) === 'lunas');
+            rows = rows.filter(b => matchBookingSearch(b, bayarSearchQuery));
+            rows.sort((a, b) => new Date(b.checkin) - new Date(a.checkin));
+
+            if(rows.length === 0) {
+                container.innerHTML = emptyStateHTML('✅', 'Belum ada reservasi lunas');
+                return;
+            }
+
+            container.innerHTML = rows.map(b => `
+                <div class="history-item">
+                    ${bookingDetailHTML(b, 'lunas')}
+                    ${flowStepper('lunas')}
+                    <div class="action-buttons" style="flex-direction: column;">
+                        <button class="btn-ghost" onclick="batalkanLunas('${b.firestoreId}')">↩ Batalkan Lunas</button>
+                    </div>
+                    ${waButtonsHTML(b)}
+                </div>
+            `).join('');
         }
 
         function getStatusText(status) {
@@ -3031,10 +3149,10 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             let filtered = [...bookings];
             
             if(currentAdminFilter === 'waiting') {
-                filtered = filtered.filter(b => b.status === 'waiting');
+                filtered = filtered.filter(b => flowStatus(b) === 'waiting');
             }
             
-            const waitingCount = bookings.filter(b => b.status === 'waiting').length;
+            const waitingCount = bookings.filter(b => flowStatus(b) === 'waiting').length;
             document.querySelector('[data-admin-filter="waiting"]').textContent = `Menunggu (${waitingCount})`;
             
             if(filtered.length === 0) {
@@ -3051,7 +3169,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 <div class="history-item">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <div class="booking-id" style="margin: 0;">${b.id}</div>
-                        <div class="status-badge status-${b.status}">${getStatusText(b.status)}</div>
+                        <div class="status-badge status-${flowStatus(b)}">${flowLabel(flowStatus(b))}</div>
                     </div>
                     <div class="history-header">
                         <div>
@@ -3083,7 +3201,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                             <img src="${b.paymentProof}" class="proof-preview" style="cursor: pointer;" onclick="window.open('${b.paymentProof}', '_blank')">
                         </div>
                     ` : ''}
-                    ${b.status === 'waiting' ? `
+                    ${flowStatus(b) === 'waiting' ? `
                         <div class="action-buttons">
                             <button class="btn-approve" onclick="approvePayment('${b.firestoreId}', '${b.id}', '${b.nama}', '${b.whatsapp}', ${b.dp})">
                                 ✓ Approve
@@ -3098,8 +3216,8 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         }
 
         window.approvePayment = async function(firestoreId, bookingId, nama, whatsapp, dp) {
-            await updateBooking(firestoreId, { status: 'paid' });
-            alert('✅ Pembayaran telah diapprove!');
+            await updateBooking(firestoreId, { status: 'paid', flowStatus: 'approved' });
+            alert('✅ Reservasi di-approve! Pindah ke window Menunggu Pelunasan.');
             
             const message = `🎉 *PEMBAYARAN DITERIMA*\n\nHalo ${nama},\n\nPembayaran DP Anda sebesar ${formatRupiah(dp)} telah kami terima dan dikonfirmasi.\n\n✅ Status: CONFIRMED\n📋 ID: ${bookingId}\n\nTerima kasih! 🏕️`;
             const phone = whatsapp.replace(/^0/, '62');
@@ -3109,7 +3227,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         window.rejectPayment = async function(firestoreId, bookingId, nama, whatsapp) {
             const reason = prompt('Alasan penolakan:');
             if(reason) {
-                await updateBooking(firestoreId, { status: 'rejected' });
+                await updateBooking(firestoreId, { status: 'rejected', flowStatus: 'rejected' });
                 alert('❌ Pembayaran ditolak');
                 
                 const message = `⚠️ *PEMBAYARAN DITOLAK*\n\nHalo ${nama},\n\nMaaf, pembayaran Anda ditolak.\n\nAlasan: ${reason}\n\nSilakan upload ulang bukti transfer yang benar.\n\n📋 ID: ${bookingId}`;
@@ -3120,9 +3238,9 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
 
         // Analytics
         function renderAnalytics() {
-            const totalRevenue = bookings.filter(b => ['paid', 'confirmed'].includes(b.status)).reduce((sum, b) => sum + b.harga, 0);
-            const totalBookings = bookings.length;
-            const pendingApproval = bookings.filter(b => b.status === 'waiting').length;
+            const totalRevenue = bookings.filter(b => ['approved', 'lunas'].includes(flowStatus(b))).reduce((sum, b) => sum + (b.harga || 0), 0);
+            const totalBookings = bookings.filter(b => flowStatus(b) !== 'rejected').length;
+            const pendingApproval = bookings.filter(b => flowStatus(b) === 'waiting').length;
             
             document.getElementById('totalRevenue').textContent = formatRupiah(totalRevenue);
             document.getElementById('totalBookings').textContent = totalBookings;
@@ -3156,7 +3274,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             });
             
             const monthlyRevenue = {};
-            bookings.filter(b => ['paid', 'confirmed'].includes(b.status)).forEach(b => {
+            bookings.filter(b => ['approved', 'lunas'].includes(flowStatus(b))).forEach(b => {
                 const month = new Date(b.checkin).toLocaleDateString('id-ID', { month: 'short' });
                 monthlyRevenue[month] = (monthlyRevenue[month] || 0) + b.harga;
             });
@@ -3208,9 +3326,9 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         }
 
         function getRecapRows() {
-            // Semua reservasi kecuali yang ditolak, urut berdasarkan tanggal check-in
+            // Rincian fokus ke grup "Menunggu Pelunasan" (sudah approved)
             return [...bookings]
-                .filter(b => b.status !== 'rejected')
+                .filter(b => flowStatus(b) === 'approved')
                 .sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
         }
 
@@ -3321,13 +3439,12 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 return { b, dpTunai, dpQris, sisaTunai, sisaQris };
             });
 
-            // ----- UPDATE DASHBOARD -----
-            const masukTunai = totalDpTunai + totalSisaTunai;
-            const masukQris = totalDpQris + totalSisaQris;
-            // "Belum lunas" = sisa dari booking yang belum berstatus Lunas
-            const outstanding = rows
-                .filter(b => getPayStage(b) !== 'lunas')
-                .reduce((s, b) => s + ((b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0))), 0);
+            // ----- UPDATE DASHBOARD (grup Menunggu) -----
+            // Uang yang SUDAH masuk dari grup Menunggu = DP saja (sisa belum dibayar)
+            const masukTunai = totalDpTunai;
+            const masukQris = totalDpQris;
+            // Belum lunas = total sisa yang belum dibayar (semua di grup Menunggu)
+            const outstanding = totalSisaTunai + totalSisaQris;
 
             document.getElementById('rcRevenue').textContent = 'Rp ' + (totalHarga).toLocaleString('id-ID');
             document.getElementById('rcRevenueSub').textContent = `Dari ${rows.length} reservasi`;
@@ -3483,41 +3600,45 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             XLSX.writeFile(wb, `Pinuslo_Rincian_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        // Export
+        // Export (data Lunas / window Bayar)
         function exportExcel() {
-            const ws = XLSX.utils.json_to_sheet(bookings.map(b => ({
+            const lunas = bookings.filter(b => flowStatus(b) === 'lunas');
+            if(lunas.length === 0) { alert('Belum ada data lunas untuk diexport.'); return; }
+            const ws = XLSX.utils.json_to_sheet(lunas.map(b => ({
                 'ID': b.id,
                 'Nama': b.nama,
                 'WhatsApp': b.whatsapp,
-                'Tenda': b.tenda.join(', '),
+                'Tenda': (b.tenda || []).join(', '),
                 'Paket': b.paket,
                 'Harga': b.harga,
                 'Check-in': b.checkin,
                 'Check-out': b.checkout,
                 'DP': b.dp,
                 'Sisa': b.sisa,
-                'Status': b.status
+                'Status': flowLabel(flowStatus(b))
             })));
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Reservasi');
-            XLSX.writeFile(wb, `Pinuslo_Reservasi_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, 'Lunas');
+            XLSX.writeFile(wb, `Pinuslo_Lunas_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
         function exportCSV() {
+            const lunas = bookings.filter(b => flowStatus(b) === 'lunas');
+            if(lunas.length === 0) { alert('Belum ada data lunas untuk diexport.'); return; }
             const csv = [
                 ['ID','Nama','WhatsApp','Tenda','Paket','Harga','Check-in','Check-out','DP','Sisa','Status'],
-                ...bookings.map(b => [
+                ...lunas.map(b => [
                     b.id,
                     b.nama,
                     b.whatsapp,
-                    b.tenda.join('; '),
+                    (b.tenda || []).join('; '),
                     b.paket,
                     b.harga,
                     b.checkin,
                     b.checkout,
                     b.dp,
                     b.sisa,
-                    b.status
+                    flowLabel(flowStatus(b))
                 ])
             ].map(row => row.join(',')).join('\n');
             
@@ -3525,7 +3646,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Pinuslo_Reservasi_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `Pinuslo_Lunas_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
         }
 
