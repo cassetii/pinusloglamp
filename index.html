@@ -3326,9 +3326,9 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         }
 
         function getRecapRows() {
-            // Rincian fokus ke grup "Menunggu Pelunasan" (sudah approved)
+            // Rincian = grup Menunggu (approved) + Lunas, agar konsisten dengan Analitik
             return [...bookings]
-                .filter(b => flowStatus(b) === 'approved')
+                .filter(b => ['approved', 'lunas'].includes(flowStatus(b)))
                 .sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
         }
 
@@ -3439,12 +3439,14 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 return { b, dpTunai, dpQris, sisaTunai, sisaQris };
             });
 
-            // ----- UPDATE DASHBOARD (grup Menunggu) -----
-            // Uang yang SUDAH masuk dari grup Menunggu = DP saja (sisa belum dibayar)
-            const masukTunai = totalDpTunai;
-            const masukQris = totalDpQris;
-            // Belum lunas = total sisa yang belum dibayar (semua di grup Menunggu)
-            const outstanding = totalSisaTunai + totalSisaQris;
+            // ----- UPDATE DASHBOARD (grup Menunggu + Lunas) -----
+            // Uang yang SUDAH masuk = DP (untuk yang masih Menunggu) + pelunasan penuh (untuk yang Lunas)
+            const masukTunai = totalDpTunai + totalSisaTunai;
+            const masukQris = totalDpQris + totalSisaQris;
+            // Belum lunas = sisa dari yang masih berstatus Menunggu (approved) saja
+            const outstanding = rows
+                .filter(b => flowStatus(b) === 'approved')
+                .reduce((s, b) => s + ((b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0))), 0);
 
             document.getElementById('rcRevenue').textContent = 'Rp ' + (totalHarga).toLocaleString('id-ID');
             document.getElementById('rcRevenueSub').textContent = `Dari ${rows.length} reservasi`;
