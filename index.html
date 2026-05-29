@@ -106,6 +106,28 @@
             background: rgba(255, 204, 0, 0.9);
         }
 
+        .back-katalyst {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.35);
+            padding: 5px 12px 5px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            transition: background 0.2s;
+            z-index: 101;
+        }
+        .back-katalyst:active {
+            background: rgba(255, 255, 255, 0.32);
+        }
+
         .pulse {
             width: 6px;
             height: 6px;
@@ -1443,6 +1465,9 @@
 
     <div class="app-container">
         <div class="header">
+            <button class="back-katalyst" id="backToKatalyst" onclick="kembaliKeKatalyst()" title="Kembali ke Katalyst">
+                <span style="font-size:15px;">‹</span> Katalyst
+            </button>
             <div class="firebase-status" id="firebaseStatus">
                 <div class="pulse"></div>
                 <span>Connected</span>
@@ -1899,6 +1924,30 @@
         }
 
         // Initialize app
+        // ===== KEMBALI KE KATALYST (portal app launcher) =====
+        // Ganti URL ini dengan URL portal Katalyst kamu setelah di-deploy.
+        const KATALYST_URL = 'https://pinusloapps.netlify.app/';
+
+        window.kembaliKeKatalyst = function() {
+            try {
+                // Jika glamping dibuka di tab baru dari Katalyst, tutup tab ini
+                if (window.opener && !window.opener.closed) {
+                    window.opener.focus();
+                    window.close();
+                    return;
+                }
+            } catch(e) { /* abaikan */ }
+
+            // Jika ada history (dibuka via navigasi), kembali
+            if (document.referrer && document.referrer.includes('pinusloapps')) {
+                history.back();
+                return;
+            }
+
+            // Fallback: arahkan ke portal Katalyst
+            window.location.href = KATALYST_URL;
+        };
+
         window.initApp = function() {
             console.log('🚀 Initializing app...');
             setupFirebaseListeners();
