@@ -1131,6 +1131,101 @@
             color: #c7c1b8;
         }
 
+        /* ===== RECAP DASHBOARD ===== */
+        .recap-dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .recap-hero {
+            background: linear-gradient(135deg, var(--green) 0%, #2d4419 100%);
+            border-radius: 18px;
+            padding: 20px 22px;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(52,79,31,0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        .recap-hero::after {
+            content: '🏕️';
+            position: absolute;
+            right: 14px;
+            bottom: -8px;
+            font-size: 64px;
+            opacity: 0.12;
+        }
+        .recap-hero .hero-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+        .recap-hero .hero-value {
+            font-size: 30px;
+            font-weight: 800;
+            margin-top: 4px;
+            letter-spacing: -0.5px;
+        }
+        .recap-hero .hero-sub {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 6px;
+        }
+
+        .recap-stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .recap-stat {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            border-left: 4px solid var(--orange);
+        }
+        .recap-stat.tunai { border-left-color: #2E7D32; }
+        .recap-stat.qris  { border-left-color: var(--blue); }
+        .recap-stat.count { border-left-color: var(--orange); }
+        .recap-stat.sisa  { border-left-color: var(--red); }
+
+        .recap-stat .rs-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #8E8E93;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .recap-stat .rs-value {
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--green);
+            margin-top: 8px;
+            line-height: 1.15;
+            word-break: break-word;
+        }
+        .recap-stat .rs-foot {
+            font-size: 11px;
+            color: #8E8E93;
+            margin-top: 4px;
+        }
+
+        .recap-filter-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 4px 0 8px;
+        }
+
         /* 6 tabs need to fit in the 430px bar */
         .tab-item {
             flex: 1;
@@ -1392,10 +1487,59 @@
 
         <!-- RINCIAN / RECAP TAB -->
         <div class="content" id="recapTab">
-            <div class="card">
-                <div class="recap-title">Rincian Penyewaan Glamping &amp; Semi Glamping</div>
+            <div class="recap-title">Rincian Penyewaan Glamping &amp; Semi Glamping</div>
 
-                <button class="export-btn" id="exportRecap">
+            <!-- DASHBOARD RINGKASAN -->
+            <div class="recap-dashboard">
+                <div class="recap-hero">
+                    <div class="hero-label">Total Pendapatan</div>
+                    <div class="hero-value" id="rcRevenue">Rp 0</div>
+                    <div class="hero-sub" id="rcRevenueSub">Dari 0 reservasi</div>
+                </div>
+
+                <div class="recap-stat-grid">
+                    <div class="recap-stat count">
+                        <div class="rs-top">📋 Reservasi</div>
+                        <div class="rs-value" id="rcCount">0</div>
+                        <div class="rs-foot" id="rcTentCount">0 tenda terpakai</div>
+                    </div>
+                    <div class="recap-stat sisa">
+                        <div class="rs-top">⏳ Belum Lunas</div>
+                        <div class="rs-value" id="rcOutstanding">Rp 0</div>
+                        <div class="rs-foot" id="rcOutstandingFoot">Sisa tagihan</div>
+                    </div>
+                    <div class="recap-stat tunai">
+                        <div class="rs-top">💵 Masuk Tunai</div>
+                        <div class="rs-value" id="rcTunai">Rp 0</div>
+                        <div class="rs-foot">DP + Pelunasan</div>
+                    </div>
+                    <div class="recap-stat qris">
+                        <div class="rs-top">📱 Masuk QRIS</div>
+                        <div class="rs-value" id="rcQris">Rp 0</div>
+                        <div class="rs-foot">DP + Pelunasan</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" id="recapSearch" placeholder="Cari tenda, paket, atau tanggal...">
+                </div>
+
+                <div class="recap-filter-label">Filter Bulan</div>
+                <div class="filter-chips" id="recapMonthChips">
+                    <button class="filter-chip active" data-recap-month="all">Semua</button>
+                </div>
+
+                <div class="recap-filter-label">Metode Pembayaran</div>
+                <div class="filter-chips" id="recapMethodChips">
+                    <button class="filter-chip active" data-recap-method="all">Semua</button>
+                    <button class="filter-chip" data-recap-method="tunai">💵 Tunai</button>
+                    <button class="filter-chip" data-recap-method="qris">📱 QRIS</button>
+                </div>
+
+                <button class="export-btn" id="exportRecap" style="margin-top:14px;">
                     📊 Export Rincian ke Excel
                 </button>
 
@@ -1491,6 +1635,9 @@
         let currentFilter = 'all';
         let currentAdminFilter = 'waiting';
         let searchQuery = '';
+        let recapMonthFilter = 'all';
+        let recapMethodFilter = 'all';
+        let recapSearchQuery = '';
         let currentBookingId = null;
         let selectedTentFilter = 'all';
         let currentView = 'calendar';
@@ -1751,6 +1898,22 @@
             document.getElementById('exportExcel').addEventListener('click', exportExcel);
             document.getElementById('exportCSV').addEventListener('click', exportCSV);
             document.getElementById('exportRecap').addEventListener('click', exportRecap);
+
+            // Recap search
+            document.getElementById('recapSearch').addEventListener('input', (e) => {
+                recapSearchQuery = e.target.value;
+                renderRecap();
+            });
+
+            // Recap method filter chips
+            document.querySelectorAll('[data-recap-method]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-recap-method]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    recapMethodFilter = btn.dataset.recapMethod;
+                    renderRecap();
+                });
+            });
         }
 
         function calculateSisa() {
@@ -2675,27 +2838,82 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 .sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
         }
 
-        function renderRecap() {
-            const rows = getRecapRows();
-            const container = document.getElementById('recapTableContainer');
+        function monthKey(dateStr) {
+            const d = new Date(dateStr);
+            if(isNaN(d)) return null;
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        }
 
-            if(rows.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="padding:40px 20px;">
-                        <div class="empty-icon">📋</div>
-                        <div class="empty-text">Belum ada data penyewaan</div>
-                    </div>
-                `;
-                return;
+        function monthLabel(key) {
+            const [y, m] = key.split('-');
+            const d = new Date(Number(y), Number(m) - 1, 1);
+            return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        }
+
+        function recapHasMethod(b, method) {
+            const dpMethod = b.dpMethod || 'qris';
+            const sisaMethod = b.sisaMethod || 'tunai';
+            const dp = b.dp || 0;
+            const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - dp);
+            if(method === 'tunai') return (dpMethod === 'tunai' && dp > 0) || (sisaMethod === 'tunai' && sisa > 0);
+            if(method === 'qris')  return (dpMethod === 'qris' && dp > 0)  || (sisaMethod === 'qris' && sisa > 0);
+            return true;
+        }
+
+        function getFilteredRecapRows() {
+            let rows = getRecapRows();
+
+            if(recapMonthFilter !== 'all') {
+                rows = rows.filter(b => monthKey(b.checkin) === recapMonthFilter);
             }
+            if(recapMethodFilter !== 'all') {
+                rows = rows.filter(b => recapHasMethod(b, recapMethodFilter));
+            }
+            if(recapSearchQuery) {
+                const q = recapSearchQuery.toLowerCase();
+                rows = rows.filter(b =>
+                    (b.tenda || []).join(' ').toLowerCase().includes(q) ||
+                    (b.paket || '').toLowerCase().includes(q) ||
+                    (b.checkin || '').includes(q) ||
+                    formatRecapDate(b.checkin).toLowerCase().includes(q)
+                );
+            }
+            return rows;
+        }
+
+        function buildRecapMonthChips() {
+            const container = document.getElementById('recapMonthChips');
+            const keys = [...new Set(getRecapRows().map(b => monthKey(b.checkin)).filter(Boolean))]
+                .sort().reverse();
+
+            let html = `<button class="filter-chip ${recapMonthFilter === 'all' ? 'active' : ''}" data-recap-month="all">Semua</button>`;
+            html += keys.map(k =>
+                `<button class="filter-chip ${recapMonthFilter === k ? 'active' : ''}" data-recap-month="${k}">${monthLabel(k)}</button>`
+            ).join('');
+            container.innerHTML = html;
+
+            container.querySelectorAll('[data-recap-month]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    recapMonthFilter = btn.dataset.recapMonth;
+                    renderRecap();
+                });
+            });
+        }
+
+        function renderRecap() {
+            buildRecapMonthChips();
+
+            const rows = getFilteredRecapRows();
+            const container = document.getElementById('recapTableContainer');
 
             const num = (v) => (v && v > 0) ? Number(v).toLocaleString('id-ID') : '';
 
             let totalDpTunai = 0, totalDpQris = 0, totalSisaTunai = 0, totalSisaQris = 0, totalHarga = 0;
+            const tentSet = new Set();
 
-            const body = rows.map(b => {
-                const dpMethod = (b.dpMethod || 'qris');      // default lama: QRIS
-                const sisaMethod = (b.sisaMethod || 'tunai'); // default lama: Tunai
+            const rowData = rows.map(b => {
+                const dpMethod = (b.dpMethod || 'qris');
+                const sisaMethod = (b.sisaMethod || 'tunai');
                 const dp = b.dp || 0;
                 const sisa = (b.sisa != null) ? b.sisa : ((b.harga || 0) - dp);
 
@@ -2709,25 +2927,55 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
                 totalSisaTunai += sisaTunai;
                 totalSisaQris += sisaQris;
                 totalHarga += (b.harga || 0);
+                (b.tenda || []).forEach(t => tentSet.add(t));
 
-                const cell = (val) => val > 0
-                    ? `<td class="amount">${num(val)}</td>`
-                    : `<td class="amount muted">-</td>`;
+                return { b, dpTunai, dpQris, sisaTunai, sisaQris };
+            });
 
-                return `
-                    <tr>
-                        <td class="text-left">${formatRecapDate(b.checkin)}</td>
-                        <td class="text-left">${formatRecapDate(b.checkout)}</td>
-                        <td class="text-left">${(b.tenda || []).join(', ')}</td>
-                        <td class="text-left">${b.paket || '-'}</td>
-                        ${cell(dpTunai)}
-                        ${cell(dpQris)}
-                        ${cell(sisaTunai)}
-                        ${cell(sisaQris)}
-                        <td class="amount">${num(b.harga || 0) || '0'}</td>
-                    </tr>
+            // ----- UPDATE DASHBOARD -----
+            const masukTunai = totalDpTunai + totalSisaTunai;
+            const masukQris = totalDpQris + totalSisaQris;
+            // "Belum lunas" = sisa dari booking yang belum paid/confirmed
+            const outstanding = rows
+                .filter(b => !['paid', 'confirmed'].includes(b.status))
+                .reduce((s, b) => s + ((b.sisa != null) ? b.sisa : ((b.harga || 0) - (b.dp || 0))), 0);
+
+            document.getElementById('rcRevenue').textContent = 'Rp ' + (totalHarga).toLocaleString('id-ID');
+            document.getElementById('rcRevenueSub').textContent = `Dari ${rows.length} reservasi`;
+            document.getElementById('rcCount').textContent = rows.length;
+            document.getElementById('rcTentCount').textContent = `${tentSet.size} tenda terpakai`;
+            document.getElementById('rcOutstanding').textContent = 'Rp ' + outstanding.toLocaleString('id-ID');
+            document.getElementById('rcTunai').textContent = 'Rp ' + masukTunai.toLocaleString('id-ID');
+            document.getElementById('rcQris').textContent = 'Rp ' + masukQris.toLocaleString('id-ID');
+
+            // ----- TABEL -----
+            if(rows.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding:40px 20px;">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-text">Tidak ada data yang cocok dengan filter</div>
+                    </div>
                 `;
-            }).join('');
+                return;
+            }
+
+            const cell = (val) => val > 0
+                ? `<td class="amount">${num(val)}</td>`
+                : `<td class="amount muted">-</td>`;
+
+            const body = rowData.map(({ b, dpTunai, dpQris, sisaTunai, sisaQris }) => `
+                <tr>
+                    <td class="text-left">${formatRecapDate(b.checkin)}</td>
+                    <td class="text-left">${formatRecapDate(b.checkout)}</td>
+                    <td class="text-left">${(b.tenda || []).join(', ')}</td>
+                    <td class="text-left">${b.paket || '-'}</td>
+                    ${cell(dpTunai)}
+                    ${cell(dpQris)}
+                    ${cell(sisaTunai)}
+                    ${cell(sisaQris)}
+                    <td class="amount">${num(b.harga || 0) || '0'}</td>
+                </tr>
+            `).join('');
 
             container.innerHTML = `
                 <table class="recap-table">
@@ -2766,7 +3014,7 @@ Terima kasih telah memesan di Pinuslo Glamping! 🌲
         }
 
         function exportRecap() {
-            const rows = getRecapRows();
+            const rows = getFilteredRecapRows();
             if(rows.length === 0) {
                 alert('Belum ada data untuk diexport.');
                 return;
