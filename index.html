@@ -1865,6 +1865,26 @@
                     console.error('Firebase error:', error);
                     statusEl.innerHTML = '<span>⚠️ Offline</span>';
                     statusEl.className = 'firebase-status';
+
+                    // Jangan biarkan layar loading nyangkut saat error
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+
+                    const isPerm = (error && (error.code === 'permission-denied' ||
+                        /permission|insufficient/i.test(error.message || '')));
+                    const recapC = document.getElementById('recapTableContainer');
+                    if(recapC) {
+                        recapC.innerHTML = `
+                            <div class="empty-state" style="padding:30px 18px;">
+                                <div class="empty-icon">⚠️</div>
+                                <div class="empty-text">
+                                    Gagal memuat data dari Firebase.<br>
+                                    ${isPerm
+                                        ? 'Akses ditolak — kemungkinan <b>Security Rules Firestore</b> menolak/expired. Perbarui rules di Firebase Console.'
+                                        : 'Periksa koneksi internet, lalu muat ulang halaman (hard refresh).'}
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
             } catch(error) {
                 console.error('Setup error:', error);
